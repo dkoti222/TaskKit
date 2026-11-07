@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable,UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, randomUUID } from 'crypto';
@@ -31,5 +31,41 @@ export class TokenService {
     });
 
     return { accessToken, refreshToken };
+  }
+    async rotate(refreshToken: string) {
+    const record = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(refreshToken) },
+      include: { user: true },
+    });
+
+    if (!record) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (record.revokedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: record.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException('Session expired. Please log in again.');
+    }
+
+    if (record.expiresAt < new Date() || record.user.deletedAt) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    await this.prisma.refreshToken.update({
+      where: { id: record.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return this.issueTokens(record.user, record.familyId);
+  }
+
+  async revoke(refreshToken: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: sha256(refreshToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 }

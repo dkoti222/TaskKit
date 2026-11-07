@@ -3,7 +3,9 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { LoginDto } from './dto/login.dto';
+import { Public } from './decorators/public.decorator';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

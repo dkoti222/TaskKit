@@ -22,6 +22,18 @@ export async function login(body: { email: string; password: string }) {
   return data;
 }
 
+/** Always succeeds with the same message, whether or not the email exists. */
+export async function forgotPassword(body: { email: string }) {
+  const { data } = await api.post<MessageResponse>('/auth/forgot-password', body);
+  return data;
+}
+
+/** Sets a new password from the emailed link. The API then revokes every refresh token. */
+export async function resetPassword(body: { token: string; password: string }) {
+  const { data } = await api.post<MessageResponse>('/auth/reset-password', body);
+  return data;
+}
+
 /** Revokes the refresh token on the server (best effort), then clears the local session. */
 export async function logOut() {
   const { refreshToken, signOut } = useSession.getState();

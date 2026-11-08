@@ -47,6 +47,9 @@ export default function RootLayout() {
           <Stack.Screen name="verify-email" />
           <Stack.Screen name="forgot-password" />
         </Stack.Protected>
+
+        {/* Opened from the emailed link (taskkit://reset-password?token=…), logged in or not. */}
+        <Stack.Screen name="reset-password" />
       </Stack>
     </QueryClientProvider>
   );

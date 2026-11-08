@@ -11,4 +11,7 @@ export class MailService {
   async sendPasswordReset(email: string, link: string) {
     this.logger.log(`Password reset link for ${email}: ${link}`);
   }
+    async sendInvitation(email: string, workspaceName: string, link: string) {
+    this.logger.log(`Invite to "${workspaceName}" for ${email}: ${link}`);
+  }
 }

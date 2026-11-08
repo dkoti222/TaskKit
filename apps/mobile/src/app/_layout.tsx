@@ -27,6 +27,10 @@ export default function RootLayout() {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
 
+  // Keep the splash screen up until we know who the user is. Rendering the navigator earlier
+  // would briefly treat everyone as logged out and break deep links into logged-in screens.
+  if (!ready) return null;
+
   const signedIn = status === 'signedIn';
 
   return (
@@ -34,13 +38,15 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
-        {/* Logged-in screens */}
-        <Stack.Protected guard={signedIn}>
-          <Stack.Screen name="index" />
+        {/* Logged-in screens. Logged-out users are sent to Welcome. */}
+        <Stack.Protected guard={signedIn} redirectTo="/welcome">
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="delete-account" />
         </Stack.Protected>
 
-        {/* Logged-out screens. The first one (welcome) is where logging out lands. */}
-        <Stack.Protected guard={!signedIn}>
+        {/* Logged-out screens. Logged-in users are sent to Home. */}
+        <Stack.Protected guard={!signedIn} redirectTo="/">
           <Stack.Screen name="welcome" />
           <Stack.Screen name="login" />
           <Stack.Screen name="sign-up" />

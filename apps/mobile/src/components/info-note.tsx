@@ -5,18 +5,21 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { colors, spacing } from '@/theme';
 
-/** Grey box with an icon and a short explanation. */
+/** Grey (or soft blue) box with an icon and a short explanation. */
 export function InfoNote({
   icon,
+  tone = 'neutral',
   children,
 }: {
   icon: ComponentProps<typeof Feather>['name'];
+  tone?: 'neutral' | 'primary';
   children: string;
 }) {
+  const fg = tone === 'primary' ? colors.primary : colors.muted;
   return (
-    <View style={styles.box}>
-      <Feather name={icon} size={17} color={colors.muted} style={styles.icon} />
-      <AppText variant="secondary" style={styles.text}>
+    <View style={[styles.box, tone === 'primary' && { backgroundColor: colors.primarySoft }]}>
+      <Feather name={icon} size={17} color={fg} style={styles.icon} />
+      <AppText variant="secondary" style={[styles.text, { color: fg }]}>
         {children}
       </AppText>
     </View>

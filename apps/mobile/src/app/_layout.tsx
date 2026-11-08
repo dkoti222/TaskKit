@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { queryClient } from '@/api/query-client';
+import { usePendingInvite } from '@/store/pending-invite';
 import { useSession } from '@/store/session';
 import { colors, fontAssets } from '@/theme';
 
@@ -19,6 +20,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     void hydrate();
+    void usePendingInvite.getState().hydrate();
   }, [hydrate]);
 
   const ready = (fontsLoaded || !!fontError) && status !== 'loading';
@@ -43,6 +45,12 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
           <Stack.Screen name="delete-account" />
+          <Stack.Screen name="new-workspace" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="workspace/[id]/index" />
+          <Stack.Screen name="workspace/[id]/members" />
+          <Stack.Screen name="workspace/[id]/settings" />
+          <Stack.Screen name="workspace/[id]/invite" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="join" options={{ presentation: 'modal' }} />
         </Stack.Protected>
 
         {/* Logged-out screens. Logged-in users are sent to Home. */}
@@ -56,6 +64,8 @@ export default function RootLayout() {
 
         {/* Opened from the emailed link (taskkit://reset-password?token=…), logged in or not. */}
         <Stack.Screen name="reset-password" />
+        {/* taskkit://invite/<token>. Outside the guards so a logged-out user's token isn't lost. */}
+        <Stack.Screen name="invite/[token]" />
       </Stack>
     </QueryClientProvider>
   );

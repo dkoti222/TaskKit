@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -8,17 +9,19 @@ type Props = {
   title: string;
   onBack: () => void;
   backIcon?: 'chevron-left' | 'x';
+  /** Optional action at the right (e.g. "Invite", "Save"). Keeps the title centred. */
+  right?: ReactNode;
 };
 
-/** Top bar with a back button, a centred title and a bottom border (Delete account, Edit profile). */
-export function NavHeader({ title, onBack, backIcon = 'chevron-left' }: Props) {
+/** Top bar with a back button, a centred title and a bottom border. */
+export function NavHeader({ title, onBack, backIcon = 'chevron-left', right }: Props) {
   return (
     <View style={styles.bar}>
       <IconButton icon={backIcon} label={backIcon === 'x' ? 'Close' : 'Go back'} onPress={onBack} />
       <AppText style={styles.title} accessibilityRole="header" numberOfLines={1}>
         {title}
       </AppText>
-      <View style={styles.spacer} />
+      <View style={styles.right}>{right}</View>
     </View>
   );
 }
@@ -34,5 +37,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   title: { flex: 1, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 17 },
-  spacer: { width: 44 },
+  right: { minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
 });

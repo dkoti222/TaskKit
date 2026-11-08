@@ -1,0 +1,38 @@
+import type { AssignableRole, Role } from '@/api/types';
+
+export const ROLE_LABEL: Record<Role, string> = {
+  OWNER: 'Owner',
+  ADMIN: 'Admin',
+  MEMBER: 'Member',
+  VIEWER: 'Viewer',
+};
+
+export const ROLE_DESCRIPTION: Record<AssignableRole, string> = {
+  ADMIN: 'Manage members, roles and all boards.',
+  MEMBER: 'Create boards, lists and cards. Comment and move cards.',
+  VIEWER: 'Read-only access to workspace boards.',
+};
+
+// These mirror docs/permissions.md so we can hide controls the API would refuse with 403.
+
+/** Rename, invite, change roles, remove members. */
+export const canManageWorkspace = (role: Role | undefined) => role === 'OWNER' || role === 'ADMIN';
+
+/** Roles this user may hand out (only the Owner can make Admins). */
+export function assignableRoles(role: Role | undefined): AssignableRole[] {
+  if (role === 'OWNER') return ['ADMIN', 'MEMBER', 'VIEWER'];
+  if (role === 'ADMIN') return ['MEMBER', 'VIEWER'];
+  return [];
+}
+
+/** Whether `actor` may change or remove `target` via the members API. */
+export function canManageMember(
+  actor: { userId: string; role: Role | undefined },
+  target: { userId: string; role: Role },
+) {
+  if (!canManageWorkspace(actor.role)) return false;
+  if (actor.userId === target.userId) return false; // nobody changes themselves here
+  if (target.role === 'OWNER') return false; // nobody changes the Owner here
+  if (target.role === 'ADMIN') return actor.role === 'OWNER';
+  return true;
+}

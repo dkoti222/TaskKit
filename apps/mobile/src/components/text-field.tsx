@@ -8,11 +8,13 @@ type Props = TextInputProps & {
   label: string;
   /** Shown at the right of the label row, e.g. a "Forgot password?" link. */
   labelAccessory?: ReactNode;
+  /** Muted text right after the label, e.g. "(optional)". */
+  labelHint?: string;
   invalid?: boolean;
 };
 
 export const TextField = forwardRef<TextInputInstance, Props>(function TextField(
-  { label, labelAccessory, invalid, style, onFocus, onBlur, ...rest },
+  { label, labelAccessory, labelHint, invalid, style, onFocus, onBlur, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
@@ -20,7 +22,10 @@ export const TextField = forwardRef<TextInputInstance, Props>(function TextField
   return (
     <View style={styles.wrapper}>
       <View style={styles.labelRow}>
-        <AppText variant="label">{label}</AppText>
+        <AppText variant="label">
+          {label}
+          {labelHint ? <AppText style={styles.hint}> {labelHint}</AppText> : null}
+        </AppText>
         {labelAccessory}
       </View>
       <TextInput
@@ -55,6 +60,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 20,
   },
+  hint: { fontSize: 14, color: colors.muted },
   input: {
     height: sizes.input,
     borderWidth: 1,

@@ -53,5 +53,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  text: { fontFamily: fonts.semibold, fontSize: 15 },
+  text: { fontFamily: fonts.semibold, fontSize: 16 },
 });

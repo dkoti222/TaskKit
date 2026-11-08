@@ -24,14 +24,14 @@ export default function WelcomeScreen() {
         </View>
       }>
       <View style={styles.logo}>
-        <Logo />
+        <Logo size={38} />
       </View>
 
       <BoardPreview />
 
       <View style={styles.copy}>
-        <AppText variant="title">Plan work with your team, board by board</AppText>
-        <AppText variant="secondary">
+        <AppText variant="display">Plan work with your team, board by board</AppText>
+        <AppText variant="secondary" style={styles.body}>
           Workspaces, boards and cards that update live for everyone, with the right access for
           each person.
         </AppText>
@@ -51,12 +51,12 @@ function BoardPreview() {
       importantForAccessibility="no-hide-descendants">
       <Column title="To do">
         <MiniCard accent={ACCENTS.blue} />
-        <MiniCard accent={ACCENTS.red} />
-        <MiniCard />
+        <MiniCard accent={ACCENTS.red} short />
+        <MiniCard short />
       </Column>
       <Column title="Doing">
         <MiniCard accent={ACCENTS.orange} highlighted />
-        <MiniCard />
+        <MiniCard short />
       </Column>
       <Column title="Done">
         <MiniCard accent={ACCENTS.green} />
@@ -74,38 +74,48 @@ function Column({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function MiniCard({ accent, highlighted }: { accent?: string; highlighted?: boolean }) {
+function MiniCard({
+  accent,
+  highlighted,
+  short,
+}: {
+  accent?: string;
+  highlighted?: boolean;
+  short?: boolean;
+}) {
   return (
     <View style={[styles.miniCard, highlighted && styles.miniCardHighlighted]}>
       {accent ? <View style={[styles.accent, { backgroundColor: accent }]} /> : null}
-      <View style={styles.line} />
+      <View style={[styles.line, short && styles.lineShort]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  logo: { marginTop: spacing.xl, marginBottom: spacing.sm },
+  logo: { marginTop: spacing.xl, marginBottom: spacing.xl },
   preview: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.md,
+    gap: 10,
+    padding: spacing.lg,
     borderRadius: radius.card,
     backgroundColor: colors.background,
-    minHeight: 170,
+    minHeight: 168,
   },
-  column: { flex: 1, gap: 6 },
-  columnTitle: { fontFamily: fonts.medium, fontSize: 11, color: colors.muted, marginBottom: 2 },
+  column: { flex: 1, gap: 8 },
+  columnTitle: { fontFamily: fonts.medium, fontSize: 12, color: '#3D424D', marginBottom: 2 },
   miniCard: {
     backgroundColor: colors.surface,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.divider,
-    padding: 7,
-    gap: 5,
+    padding: 9,
+    gap: 7,
   },
   miniCardHighlighted: { borderColor: colors.primary },
-  accent: { width: 22, height: 4, borderRadius: 2 },
-  line: { height: 4, borderRadius: 2, backgroundColor: colors.divider, width: '80%' },
-  copy: { gap: spacing.sm, marginTop: spacing.lg },
+  accent: { width: 32, height: 6, borderRadius: 3 },
+  line: { height: 6, borderRadius: 3, backgroundColor: colors.divider, width: '88%' },
+  lineShort: { width: '65%' },
+  copy: { gap: spacing.md, marginTop: spacing.xl },
+  body: { lineHeight: 24 },
   actions: { alignSelf: 'stretch', gap: spacing.md },
 });

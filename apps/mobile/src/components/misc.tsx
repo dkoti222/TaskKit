@@ -29,13 +29,26 @@ export function IconButton({
 }
 
 /** Inline blue text link. hitSlop keeps the touch target at least 44px tall. */
-export function TextLink({ title, onPress }: { title: string; onPress: () => void }) {
+export function TextLink({
+  title,
+  onPress,
+  inline,
+}: {
+  title: string;
+  onPress: () => void;
+  /** Smaller, medium-weight link that sits in a label row. */
+  inline?: boolean;
+}) {
   return (
     <Pressable
       accessibilityRole="link"
       onPress={onPress}
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
-      {({ pressed }) => <Text style={[styles.link, pressed && { opacity: 0.6 }]}>{title}</Text>}
+      {({ pressed }) => (
+        <Text style={[styles.link, inline && styles.linkInline, pressed && { opacity: 0.6 }]}>
+          {title}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -62,17 +75,19 @@ export function FooterPrompt({
 export function IconTile({ icon }: { icon: FeatherName }) {
   return (
     <View style={styles.tile}>
-      <Feather name={icon} size={22} color={colors.primary} />
+      <Feather name={icon} size={24} color={colors.primary} />
     </View>
   );
 }
+
+const TONE_COLORS = { error: colors.danger, success: colors.success, info: colors.muted };
 
 /** Message shown under a form. Errors are plain danger-coloured text. */
 export function FormMessage({
   tone = 'error',
   message,
 }: {
-  tone?: 'error' | 'success';
+  tone?: 'error' | 'success' | 'info';
   message?: string | null;
 }) {
   if (!message) return null;
@@ -80,7 +95,7 @@ export function FormMessage({
     <AppText
       accessibilityLiveRegion="polite"
       variant="secondary"
-      style={{ color: tone === 'error' ? colors.danger : colors.success }}>
+      style={{ color: TONE_COLORS[tone] }}>
       {message}
     </AppText>
   );
@@ -94,25 +109,32 @@ export function Logo({ size = 32 }: { size?: number }) {
       <View
         style={[
           styles.logoMark,
-          { width: size, height: size, borderRadius: size * 0.25, gap: size * 0.1 },
+          {
+            width: size,
+            height: size,
+            borderRadius: size * 0.25,
+            gap: size * 0.1,
+            paddingTop: size * 0.29,
+          },
         ]}>
         <View style={[bar, { height: size * 0.42 }]} />
         <View style={[bar, { height: size * 0.3 }]} />
         <View style={[bar, { height: size * 0.42 }]} />
       </View>
-      <Text style={[styles.logoText, { fontSize: size * 0.56 }]}>TaskKit</Text>
+      <Text style={[styles.logoText, { fontSize: size * 0.52 }]}>TaskKit</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  link: { fontFamily: fonts.semibold, fontSize: 14, color: colors.primary },
+  link: { fontFamily: fonts.semibold, fontSize: 15, color: colors.primary },
+  linkInline: { fontFamily: fonts.medium, fontSize: 14 },
   footerRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
   tile: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -123,7 +145,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingTop: '28%',
   },
   logoText: { fontFamily: fonts.bold, color: colors.ink },
 });

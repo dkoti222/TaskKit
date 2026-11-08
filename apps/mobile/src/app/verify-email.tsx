@@ -6,9 +6,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { resendCode, verifyEmail } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
 import { AppText } from '@/components/app-text';
+import { AuthHeading } from '@/components/auth-heading';
 import { Button } from '@/components/button';
 import { CodeInput } from '@/components/code-input';
-import { FooterPrompt, FormMessage, IconButton, IconTile, TextLink } from '@/components/misc';
+import { FooterPrompt, FormMessage, IconButton, TextLink } from '@/components/misc';
 import { Screen } from '@/components/screen';
 import { formatSeconds, useCountdown } from '@/hooks/use-countdown';
 import { useSession } from '@/store/session';
@@ -83,17 +84,13 @@ export default function VerifyEmailScreen() {
     <Screen
       header={<IconButton icon="chevron-left" label="Go back" onPress={goBack} />}
       footer={<FooterPrompt prompt="Wrong email?" action="Change it" onPress={goBack} />}>
-      <View style={styles.heading}>
-        <IconTile icon="mail" />
-        <AppText variant="title" style={styles.title}>
-          Check your email
-        </AppText>
-        <AppText variant="secondary">
+      <AuthHeading icon="mail" title="Check your email">
+        <>
           {justSent ? 'We sent a 6-digit code to ' : 'Your email isn’t verified yet. Enter the code we sent to '}
           <Text style={styles.email}>{email}</Text>
           {justSent ? '. Enter it below to verify your account.' : ', or ask for a new one.'}
-        </AppText>
-      </View>
+        </>
+      </AuthHeading>
 
       <CodeInput
         value={code}
@@ -103,7 +100,12 @@ export default function VerifyEmailScreen() {
         autoFocus
       />
 
-      <Button title="Verify and continue" onPress={() => submit()} loading={verify.isPending} />
+      <Button
+        title="Verify and continue"
+        onPress={() => submit()}
+        loading={verify.isPending}
+        style={styles.cta}
+      />
       <FormMessage tone={message?.tone} message={message?.text} />
 
       <View style={styles.resendRow}>
@@ -123,8 +125,7 @@ export default function VerifyEmailScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm },
-  title: { marginTop: spacing.sm },
+  cta: { marginTop: spacing.sm },
   email: { fontFamily: fonts.semibold, color: colors.ink },
   timer: { fontFamily: fonts.semibold, color: colors.ink },
   resendRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },

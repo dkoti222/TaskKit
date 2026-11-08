@@ -62,18 +62,18 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8 },
   box: {
     flex: 1,
-    height: 52,
+    height: 56,
     borderRadius: radius.control,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.divider,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
-  boxFilled: { borderColor: colors.ink },
+  boxFilled: { borderColor: colors.primary },
   boxActive: { borderColor: colors.primary, borderWidth: 1.5 },
   boxInvalid: { borderColor: colors.danger },
-  digit: { fontFamily: fonts.semibold, fontSize: 20, color: colors.ink },
+  digit: { fontFamily: fonts.semibold, fontSize: 22, color: colors.ink },
   // Covers the boxes so taps land on the real input; invisible but still focusable.
   hiddenInput: { ...StyleSheet.absoluteFill, opacity: 0.01, color: 'transparent' },
 });

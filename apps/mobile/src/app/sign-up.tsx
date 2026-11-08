@@ -6,6 +6,7 @@ import { StyleSheet, Text, View, type TextInputInstance } from 'react-native';
 import { register } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
 import { AppText } from '@/components/app-text';
+import { AuthHeading } from '@/components/auth-heading';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { FooterPrompt, FormMessage, IconButton } from '@/components/misc';
@@ -66,10 +67,7 @@ export default function SignUpScreen() {
           onPress={() => router.replace('/login')}
         />
       }>
-      <View style={styles.heading}>
-        <AppText variant="title">Create your account</AppText>
-        <AppText variant="secondary">Start a workspace or join your team.</AppText>
-      </View>
+      <AuthHeading title="Create your account">Start a workspace or join your team.</AuthHeading>
 
       <TextField
         label="Full name"
@@ -126,14 +124,19 @@ export default function SignUpScreen() {
         </AppText>
       </Checkbox>
 
-      <Button title="Create account" onPress={submit} loading={mutation.isPending} />
+      <Button
+        title="Create account"
+        onPress={submit}
+        loading={mutation.isPending}
+        style={styles.cta}
+      />
       <FormMessage message={error} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.sm },
-  strength: { gap: spacing.sm },
+  strength: { gap: 6, marginTop: -spacing.xs },
+  cta: { marginTop: spacing.xs },
   linkText: { color: colors.primary, fontFamily: fonts.medium },
 });

@@ -6,13 +6,14 @@ import { StyleSheet, View, type TextInputInstance } from 'react-native';
 import { login } from '@/api/auth';
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import { AppText } from '@/components/app-text';
+import { AuthHeading } from '@/components/auth-heading';
 import { Button } from '@/components/button';
 import { FooterPrompt, FormMessage, IconButton, TextLink } from '@/components/misc';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { isEmail } from '@/lib/validation';
 import { useSession } from '@/store/session';
-import { spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 // 02 · Log in
 export default function LoginScreen() {
@@ -26,6 +27,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [googleNote, setGoogleNote] = useState(false);
   const passwordRef = useRef<TextInputInstance>(null);
 
   const mutation = useMutation({
@@ -67,10 +69,7 @@ export default function LoginScreen() {
           onPress={() => router.replace('/sign-up')}
         />
       }>
-      <View style={styles.heading}>
-        <AppText variant="title">Welcome back</AppText>
-        <AppText variant="secondary">Log in to your workspaces.</AppText>
-      </View>
+      <AuthHeading title="Welcome back">Log in to your workspaces.</AuthHeading>
 
       {notice ? <FormMessage tone={notice.tone} message={notice.message} /> : null}
 
@@ -92,7 +91,11 @@ export default function LoginScreen() {
         ref={passwordRef}
         label="Password"
         labelAccessory={
-          <TextLink title="Forgot password?" onPress={() => router.push('/forgot-password')} />
+          <TextLink
+            inline
+            title="Forgot password?"
+            onPress={() => router.push('/forgot-password')}
+          />
         }
         value={password}
         onChangeText={setPassword}
@@ -106,11 +109,30 @@ export default function LoginScreen() {
 
       <Button title="Log in" onPress={submit} loading={mutation.isPending} style={styles.cta} />
       <FormMessage message={error} />
+
+      <View style={styles.divider} accessibilityElementsHidden importantForAccessibility="no">
+        <View style={styles.line} />
+        <AppText variant="small">or</AppText>
+        <View style={styles.line} />
+      </View>
+      {/* In the design, but the API has no Google sign-in yet (open question in the project doc). */}
+      <Button
+        title="Continue with Google"
+        variant="secondary"
+        onPress={() => setGoogleNote(true)}
+      />
+      <FormMessage
+        tone="info"
+        message={
+          googleNote ? 'Google sign-in isn’t available yet. Log in with your email for now.' : null
+        }
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.sm },
-  cta: { marginTop: spacing.xs },
+  cta: { marginTop: spacing.sm },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.sm },
+  line: { flex: 1, height: 1, backgroundColor: colors.divider },
 });

@@ -1,13 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type TextInputInstance } from 'react-native';
+import { StyleSheet, type TextInputInstance } from 'react-native';
 
 import { resetPassword } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
-import { AppText } from '@/components/app-text';
+import { AuthHeading } from '@/components/auth-heading';
 import { Button } from '@/components/button';
-import { FooterPrompt, FormMessage, IconButton, IconTile } from '@/components/misc';
+import { FooterPrompt, FormMessage, IconButton } from '@/components/misc';
 import { PasswordStrength } from '@/components/password-strength';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
@@ -65,15 +65,9 @@ export default function ResetPasswordScreen() {
   if (!token) {
     return (
       <Screen header={header}>
-        <View style={styles.heading}>
-          <IconTile icon="lock" />
-          <AppText variant="title" style={styles.title}>
-            This link is incomplete
-          </AppText>
-          <AppText variant="secondary">
-            Open the reset link from your email again, or request a new one.
-          </AppText>
-        </View>
+        <AuthHeading icon="lock" title="This link is incomplete">
+          Open the reset link from your email again, or request a new one.
+        </AuthHeading>
         {signedIn ? null : <Button title="Request a new link" onPress={requestNewLink} />}
       </Screen>
     );
@@ -83,15 +77,9 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen header={header} footer={footer}>
-      <View style={styles.heading}>
-        <IconTile icon="lock" />
-        <AppText variant="title" style={styles.title}>
-          Set a new password
-        </AppText>
-        <AppText variant="secondary">
-          Choose a new password. You’ll be signed out on all your devices.
-        </AppText>
-      </View>
+      <AuthHeading icon="lock" title="Set a new password">
+        Choose a new password. You’ll be signed out on all your devices.
+      </AuthHeading>
 
       <TextField
         label="New password"
@@ -135,7 +123,5 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm },
-  title: { marginTop: spacing.sm },
-  cta: { marginTop: spacing.xs },
+  cta: { marginTop: spacing.sm },
 });

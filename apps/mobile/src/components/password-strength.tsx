@@ -31,7 +31,7 @@ export function PasswordStrength({ password, showLabel }: { password: string; sh
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: spacing.xs, marginTop: -spacing.sm },
+  wrapper: { gap: 6, marginTop: -spacing.xs },
   bars: { flexDirection: 'row', gap: 6 },
-  bar: { flex: 1, height: 4, borderRadius: 2 },
+  bar: { flex: 1, height: 5, borderRadius: 3 },
 });

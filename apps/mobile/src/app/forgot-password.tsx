@@ -5,10 +5,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { forgotPassword } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
-import { AppText } from '@/components/app-text';
+import { AuthHeading } from '@/components/auth-heading';
 import { Button } from '@/components/button';
 import { InfoNote } from '@/components/info-note';
-import { FooterPrompt, FormMessage, IconButton, IconTile } from '@/components/misc';
+import { FooterPrompt, FormMessage, IconButton } from '@/components/misc';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { isEmail } from '@/lib/validation';
@@ -37,15 +37,9 @@ export default function ForgotPasswordScreen() {
     <Screen
       header={<IconButton icon="chevron-left" label="Go back" onPress={goToLogin} />}
       footer={<FooterPrompt prompt="Remembered it?" action="Back to log in" onPress={goToLogin} />}>
-      <View style={styles.heading}>
-        <IconTile icon="lock" />
-        <AppText variant="title" style={styles.title}>
-          Reset your password
-        </AppText>
-        <AppText variant="secondary">
-          Enter the email you signed up with and we’ll send you a reset link.
-        </AppText>
-      </View>
+      <AuthHeading icon="lock" title="Reset your password">
+        Enter the email you signed up with and we’ll send you a reset link.
+      </AuthHeading>
 
       <TextField
         label="Email"
@@ -68,19 +62,22 @@ export default function ForgotPasswordScreen() {
         title={mutation.isSuccess ? 'Send again' : 'Send reset link'}
         onPress={submit}
         loading={mutation.isPending}
+        style={styles.cta}
       />
       <FormMessage message={error} />
       {/* Same message whether or not the email exists, so accounts can't be discovered. */}
       <FormMessage tone="success" message={mutation.isSuccess ? mutation.data.message : null} />
 
-      <InfoNote icon="clock">
-        The link expires in 30 minutes. Resetting signs you out on all other devices.
-      </InfoNote>
+      <View style={styles.note}>
+        <InfoNote icon="clock">
+          The link expires in 30 minutes. Resetting signs you out on all other devices.
+        </InfoNote>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm },
-  title: { marginTop: spacing.sm },
+  cta: { marginTop: spacing.sm },
+  note: { marginTop: spacing.sm },
 });

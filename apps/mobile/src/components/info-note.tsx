@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { colors, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 /** Grey box with an icon and a short explanation. */
 export function InfoNote({
@@ -15,8 +15,8 @@ export function InfoNote({
 }) {
   return (
     <View style={styles.box}>
-      <Feather name={icon} size={16} color={colors.muted} style={styles.icon} />
-      <AppText variant="small" style={styles.text}>
+      <Feather name={icon} size={17} color={colors.muted} style={styles.icon} />
+      <AppText variant="secondary" style={styles.text}>
         {children}
       </AppText>
     </View>
@@ -26,11 +26,11 @@ export function InfoNote({
 const styles = StyleSheet.create({
   box: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.control,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: 12,
     backgroundColor: colors.background,
   },
-  icon: { marginTop: 1 },
-  text: { flex: 1 },
+  icon: { marginTop: 2 },
+  text: { flex: 1, fontSize: 14, lineHeight: 21 },
 });

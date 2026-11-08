@@ -20,9 +20,7 @@ export const TextField = forwardRef<TextInputInstance, Props>(function TextField
   return (
     <View style={styles.wrapper}>
       <View style={styles.labelRow}>
-        <AppText variant="label" style={styles.label}>
-          {label}
-        </AppText>
+        <AppText variant="label">{label}</AppText>
         {labelAccessory}
       </View>
       <TextInput
@@ -50,14 +48,13 @@ export const TextField = forwardRef<TextInputInstance, Props>(function TextField
 });
 
 const styles = StyleSheet.create({
-  wrapper: { gap: 6 },
+  wrapper: { gap: 8 },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 20,
   },
-  label: { fontSize: 13 },
   input: {
     height: sizes.input,
     borderWidth: 1,

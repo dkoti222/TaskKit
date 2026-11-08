@@ -8,6 +8,7 @@ import { RefreshDto } from './dto/refresh.dto';
 import { EmailOnlyDto } from './dto/email-only.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Public } from './decorators/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @Public()
 @Controller('auth')
@@ -16,7 +17,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly tokens: TokenService,
   ) {}
-
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
@@ -27,13 +28,13 @@ export class AuthController {
   verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.auth.verifyEmail(dto);
   }
-
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('resend-code')
   @HttpCode(200)
   resendCode(@Body() dto: EmailOnlyDto) {
     return this.auth.resendCode(dto);
   }
-
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
@@ -52,7 +53,7 @@ export class AuthController {
     await this.tokens.revoke(dto.refreshToken);
     return { message: 'Logged out' };
   }
-
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(200)
   forgotPassword(@Body() dto: EmailOnlyDto) {

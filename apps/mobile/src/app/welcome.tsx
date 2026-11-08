@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,10 +6,15 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Logo } from '@/components/misc';
 import { Screen } from '@/components/screen';
+import { useSession } from '@/store/session';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 // 01 · Welcome
 export default function WelcomeScreen() {
+  // After an expired session the guard lands here; send the user on to Log in with the message.
+  const hasNotice = useSession((s) => !!s.notice);
+  if (hasNotice) return <Redirect href="/login" />;
+
   return (
     <Screen
       footer={

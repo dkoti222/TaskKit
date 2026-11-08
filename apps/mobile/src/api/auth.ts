@@ -2,6 +2,21 @@ import { useSession } from '@/store/session';
 import { api } from './client';
 import type { AuthResponse, MessageResponse } from './types';
 
+export async function register(body: { name: string; email: string; password: string }) {
+  const { data } = await api.post<MessageResponse>('/auth/register', body);
+  return data;
+}
+
+export async function verifyEmail(body: { email: string; code: string }) {
+  const { data } = await api.post<AuthResponse>('/auth/verify-email', body);
+  return data;
+}
+
+export async function resendCode(body: { email: string }) {
+  const { data } = await api.post<MessageResponse>('/auth/resend-code', body);
+  return data;
+}
+
 export async function login(body: { email: string; password: string }) {
   const { data } = await api.post<AuthResponse>('/auth/login', body);
   return data;

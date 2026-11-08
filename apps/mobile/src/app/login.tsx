@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type TextInput } from 'react-native';
 
 import { login } from '@/api/auth';
-import { getErrorMessage } from '@/api/errors';
+import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { FooterPrompt, FormMessage, IconButton, TextLink } from '@/components/misc';
@@ -32,11 +32,17 @@ export default function LoginScreen() {
     mutationFn: login,
     // The route guard sees status 'signedIn' and shows home; no manual navigation needed.
     onSuccess: ({ accessToken, refreshToken }) => signIn({ accessToken, refreshToken }),
+    onError: (error, variables) => {
+      // 403 = correct password but email not verified yet: finish verification first.
+      if (getErrorStatus(error) === 403) {
+        router.push({ pathname: '/verify-email', params: { email: variables.email } });
+      }
+    },
   });
 
   const submit = () => {
     if (mutation.isPending) return;
-    const trimmed = email.trim();
+    const trimmed = email.trim().toLowerCase();
     if (!isEmail(trimmed)) return setFormError('Enter a valid email address.');
     if (!password) return setFormError('Enter your password.');
     setFormError(null);

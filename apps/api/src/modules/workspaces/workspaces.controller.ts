@@ -1,7 +1,21 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { WorkspacesService } from './workspaces.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
+import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/decorators/current-user.decorator';
 
@@ -24,5 +38,21 @@ export class WorkspacesController {
   @Get(':id')
   getOne(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.workspaces.getOne(user.id, id);
+  }
+
+  @Patch(':id')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER', 'ADMIN')
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkspaceDto) {
+    return this.workspaces.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER')
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    await this.workspaces.remove(id);
+    return { message: 'Workspace deleted' };
   }
 }

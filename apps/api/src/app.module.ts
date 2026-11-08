@@ -7,6 +7,7 @@
   import { AuthModule } from './modules/auth/auth.module';
   import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 
   @Module({
     imports: [
@@ -17,6 +18,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       UsersModule,
       MailModule,
       AuthModule,
+      WorkspacesModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

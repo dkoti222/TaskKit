@@ -1,5 +1,5 @@
 import { forwardRef, useState, type ReactNode } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { colors, fonts, radius, sizes } from '@/theme';
@@ -11,7 +11,7 @@ type Props = TextInputProps & {
   invalid?: boolean;
 };
 
-export const TextField = forwardRef<TextInput, Props>(function TextField(
+export const TextField = forwardRef<TextInputInstance, Props>(function TextField(
   { label, labelAccessory, invalid, style, onFocus, onBlur, ...rest },
   ref,
 ) {

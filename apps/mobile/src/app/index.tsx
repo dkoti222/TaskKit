@@ -26,7 +26,9 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={me.isRefetching}
-            onRefresh={() => me.refetch()}
+            onRefresh={() => {
+              void me.refetch();
+            }}
             tintColor={colors.primary}
           />
         }>

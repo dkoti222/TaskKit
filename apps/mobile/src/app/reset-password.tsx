@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type TextInput } from 'react-native';
+import { StyleSheet, View, type TextInputInstance } from 'react-native';
 
 import { resetPassword } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
@@ -25,7 +25,7 @@ export default function ResetPasswordScreen() {
   const [confirm, setConfirm] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const confirmRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInputInstance>(null);
 
   const mutation = useMutation({
     mutationFn: resetPassword,

@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, Text, View, type TextInput } from 'react-native';
+import { StyleSheet, Text, View, type TextInputInstance } from 'react-native';
 
 import { register } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
@@ -22,8 +22,8 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const mutation = useMutation({
     mutationFn: register,

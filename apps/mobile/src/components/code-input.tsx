@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
 
 import { colors, fonts, radius } from '@/theme';
 
@@ -16,7 +16,7 @@ type Props = {
  * SMS/email one-time-code autofill work naturally.
  */
 export function CodeInput({ value, onChange, length = 6, invalid, autoFocus }: Props) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
 
   return (

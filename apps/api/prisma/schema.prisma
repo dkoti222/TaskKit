@@ -28,6 +28,8 @@ model User {
   createdWorkspaces    Workspace[]         @relation("WorkspaceCreator")
   workspaceMemberships WorkspaceMember[]
   invitationsSent      Invitation[]        @relation("InvitationsSent")
+  createdBoards        Board[]             @relation("BoardCreator")
+  boardMemberships     BoardMember[]
 
   @@map("users")
 }
@@ -96,6 +98,7 @@ model Workspace {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
   invitations Invitation[]
+  boards      Board[]
 
   createdBy User              @relation("WorkspaceCreator", fields: [createdById], references: [id])
   members   WorkspaceMember[]
@@ -135,4 +138,44 @@ model Invitation {
   @@index([workspaceId])
   @@index([email])
   @@map("invitations")
+}
+
+// ---------- Boards ----------
+
+enum BoardVisibility {
+  WORKSPACE
+  PRIVATE
+}
+
+model Board {
+  id          String          @id @default(uuid())
+  workspaceId String          @map("workspace_id")
+  name        String
+  color       String          @default("#2F5BEA")
+  visibility  BoardVisibility @default(WORKSPACE)
+  createdById String          @map("created_by_id")
+  archivedAt  DateTime?       @map("archived_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User          @relation("BoardCreator", fields: [createdById], references: [id])
+  members   BoardMember[]
+
+  @@index([workspaceId])
+  @@map("boards")
+}
+
+model BoardMember {
+  boardId String        @map("board_id")
+  userId  String        @map("user_id")
+  role    WorkspaceRole @default(MEMBER)
+  addedAt DateTime      @default(now()) @map("added_at")
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+  @@map("board_members")
 }

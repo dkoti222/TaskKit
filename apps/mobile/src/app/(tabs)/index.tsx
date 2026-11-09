@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,10 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getErrorMessage } from '@/api/errors';
+import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import type { Workspace } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { TextLink } from '@/components/misc';
 import { RoleBadge, WorkspaceTile } from '@/components/workspace-ui';
 import { useMe } from '@/hooks/use-me';
 import { useInvitePreview, useWorkspaces } from '@/hooks/use-workspaces';
@@ -40,12 +42,18 @@ export default function HomeScreen() {
     if (pendingToken) void invite.refetch();
   };
 
+  const alreadyJoined =
+    !!invite.data && !!workspaces.data?.some((w) => w.id === invite.data.workspace.id);
+  const inviteDead = invite.isError && getErrorStatus(invite.error) === 400;
+
+  // Forget links that can never be used here: expired/used/revoked, or already joined
+  // (e.g. accepted on another device). Invites for another account are kept for that account.
+  useEffect(() => {
+    if (inviteDead || alreadyJoined) void usePendingInvite.getState().clear();
+  }, [inviteDead, alreadyJoined]);
+
   // Only show invites addressed to this account for a workspace they aren't in yet.
-  const showInvite =
-    !!pendingToken &&
-    !!invite.data &&
-    invite.data.isForYou &&
-    !workspaces.data?.some((w) => w.id === invite.data.workspace.id);
+  const showInvite = !!pendingToken && !!invite.data && invite.data.isForYou && !alreadyJoined;
 
   const isEmpty = workspaces.isSuccess && workspaces.data.length === 0;
   const name = me.data ? firstName(me.data.name) : '';
@@ -120,6 +128,9 @@ export default function HomeScreen() {
               <Feather name="plus" size={18} color={colors.primary} />
               <Text style={styles.newText}>New workspace</Text>
             </Pressable>
+            <View style={styles.joinLink}>
+              <TextLink inline title="Have an invite link?" onPress={() => router.push('/join')} />
+            </View>
           </>
         )}
       </ScrollView>
@@ -265,6 +276,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   newText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.primary },
+  joinLink: { alignItems: 'center', paddingVertical: spacing.xs },
   inviteCard: { gap: spacing.md, padding: 14 },
   inviteTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   inviteText: { flex: 1, fontSize: 14, lineHeight: 20 },

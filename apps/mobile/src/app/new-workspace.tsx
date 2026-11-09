@@ -78,7 +78,7 @@ export default function NewWorkspaceScreen() {
       navHeader={<NavHeader title="New workspace" onBack={close} backIcon="x" />}
       bottomBar={<Button title="Create workspace" onPress={submit} loading={mutation.isPending} />}>
       <View style={styles.top}>
-        <WorkspaceTile name={name || 'New workspace'} seed={name.trim() || 'new'} size={52} />
+        <WorkspaceTile name={name || 'New workspace'} seed="new" size={52} />
 
         <TextField
           label="Workspace name"

@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -247,7 +248,9 @@ export default function MembersScreen() {
             const target = sheetFor;
             setSheetFor(null);
             remove.reset();
-            setRemoving(target);
+            // iOS won't present a modal while another is still animating closed, so wait
+            // for the sheet to finish closing before opening the confirm dialog.
+            setTimeout(() => setRemoving(target), Platform.OS === 'ios' ? 400 : 0);
           }}
         />
       ) : null}

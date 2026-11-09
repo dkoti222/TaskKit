@@ -94,11 +94,12 @@ function SignedInInvite({
 
   const accept = useMutation({
     mutationFn: () => acceptInvitation(token),
-    onSuccess: async (result) => {
-      await clearPending();
-      queryClient.removeQueries({ queryKey: inviteKey(token) });
-      await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+    onSuccess: (result) => {
+      // Leave first: refreshing the list while still here would briefly show "already a member".
       router.replace({ pathname: '/workspace/[id]', params: { id: result.workspaceId } });
+      void clearPending();
+      queryClient.removeQueries({ queryKey: inviteKey(token) });
+      void queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
 

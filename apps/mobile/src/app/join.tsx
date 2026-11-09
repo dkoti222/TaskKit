@@ -11,7 +11,7 @@ import { TextField } from '@/components/text-field';
 import { parseInviteToken } from '@/store/pending-invite';
 import { spacing } from '@/theme';
 
-// "I have an invite link" from 28 · Empty state. Paste the link from the invite email,
+// "I have an invite link" (28 · Empty state) and "Have an invite link?" (Home). Paste the link,
 // then continue to 12 · Accept invite. Also handy in Expo Go, which can't open taskkit:// links.
 export default function JoinWithLinkScreen() {
   const [link, setLink] = useState('');

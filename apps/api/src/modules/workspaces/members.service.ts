@@ -64,6 +64,35 @@ export class MembersService {
     });
   }
 
+    async transferOwnership(actor: WorkspaceMember, workspaceId: string, newOwnerId: string) {
+    if (actor.userId === newOwnerId) {
+      throw new BadRequestException('You are already the Owner');
+    }
+    await this.getTarget(workspaceId, newOwnerId);
+
+    await this.prisma.$transaction([
+      this.prisma.workspaceMember.update({
+        where: { workspaceId_userId: { workspaceId, userId: newOwnerId } },
+        data: { role: 'OWNER' },
+      }),
+      this.prisma.workspaceMember.update({
+        where: { workspaceId_userId: { workspaceId, userId: actor.userId } },
+        data: { role: 'ADMIN' },
+      }),
+    ]);
+
+    return { message: 'Ownership transferred. You are now an Admin.' };
+  }
+
+  async leave(actor: WorkspaceMember, workspaceId: string) {
+    if (actor.role === 'OWNER') {
+      throw new BadRequestException('Transfer ownership before leaving this workspace');
+    }
+    await this.prisma.workspaceMember.delete({
+      where: { workspaceId_userId: { workspaceId, userId: actor.userId } },
+    });
+  }
+
   private async getTarget(workspaceId: string, userId: string) {
     const target = await this.prisma.workspaceMember.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },

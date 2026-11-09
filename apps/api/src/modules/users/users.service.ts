@@ -35,11 +35,21 @@ export class UsersService {
       throw new BadRequestException('Password is incorrect');
     }
 
+    const ownedCount = await this.prisma.workspaceMember.count({
+      where: { userId: id, role: 'OWNER' },
+    });
+    if (ownedCount > 0) {
+      throw new BadRequestException(
+        'You own a workspace. Transfer ownership or delete it before deleting your account.',
+      );
+    }
+
     await this.prisma.$transaction([
       this.prisma.refreshToken.updateMany({
         where: { userId: id, revokedAt: null },
         data: { revokedAt: new Date() },
       }),
+      this.prisma.workspaceMember.deleteMany({ where: { userId: id } }),
       this.prisma.user.update({
         where: { id },
         data: {

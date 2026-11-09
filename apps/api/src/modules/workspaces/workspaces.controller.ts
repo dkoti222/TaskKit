@@ -18,12 +18,19 @@ import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
 import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/decorators/current-user.decorator';
+import { MembersService } from './members.service';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
+import { CurrentMembership } from './decorators/current-membership.decorator';
+import type { WorkspaceMember } from '../../generated/prisma/client';
 
 @ApiTags('workspaces')
 @ApiBearerAuth()
 @Controller('workspaces')
 export class WorkspacesController {
-  constructor(private readonly workspaces: WorkspacesService) {}
+    constructor(
+    private readonly workspaces: WorkspacesService,
+    private readonly members: MembersService,
+  ) {}
 
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateWorkspaceDto) {
@@ -54,5 +61,27 @@ export class WorkspacesController {
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.workspaces.remove(id);
     return { message: 'Workspace deleted' };
+  }
+    @Post(':id/transfer-ownership')
+  @HttpCode(200)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER')
+  transferOwnership(
+    @CurrentMembership() actor: WorkspaceMember,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransferOwnershipDto,
+  ) {
+    return this.members.transferOwnership(actor, id, dto.userId);
+  }
+
+  @Post(':id/leave')
+  @HttpCode(200)
+  @UseGuards(WorkspaceRoleGuard)
+  async leave(
+    @CurrentMembership() actor: WorkspaceMember,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.members.leave(actor, id);
+    return { message: 'You left the workspace' };
   }
 }

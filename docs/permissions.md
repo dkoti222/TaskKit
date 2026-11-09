@@ -59,3 +59,9 @@
 
 - Whoever creates a board is added to it as ADMIN.
 - Board roles can be ADMIN, MEMBER or VIEWER (OWNER is workspace-only).
+
+ Only workspace members can be added to a board.
+- The workspace Owner can't be given a board role (always OWNER).
+- You can't change or remove your own board role.
+- Removing someone from a PRIVATE board removes their access;
+  on a WORKSPACE board they fall back to their workspace role.

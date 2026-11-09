@@ -8,6 +8,7 @@
   import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
+import { BoardsModule } from './modules/boards/boards.module';
 
   @Module({
     imports: [
@@ -19,6 +20,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
       MailModule,
       AuthModule,
       WorkspacesModule,
+      BoardsModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

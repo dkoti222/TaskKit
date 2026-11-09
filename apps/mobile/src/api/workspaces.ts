@@ -94,3 +94,20 @@ export async function acceptInvitation(token: string) {
   );
   return data;
 }
+
+// ---------- Ownership ----------
+
+/** Owner only. The new Owner must be a member; the old Owner becomes Admin. */
+export async function transferOwnership(workspaceId: string, userId: string) {
+  const { data } = await api.post<MessageResponse>(
+    `/workspaces/${workspaceId}/transfer-ownership`,
+    { userId },
+  );
+  return data;
+}
+
+/** Anyone but the Owner (400 for the Owner: transfer first). */
+export async function leaveWorkspace(workspaceId: string) {
+  const { data } = await api.post<MessageResponse>(`/workspaces/${workspaceId}/leave`);
+  return data;
+}

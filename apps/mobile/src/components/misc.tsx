@@ -12,10 +12,12 @@ export function IconButton({
   icon,
   label,
   onPress,
+  color = colors.ink,
 }: {
   icon: FeatherName;
   label: string;
   onPress: () => void;
+  color?: string;
 }) {
   return (
     <Pressable
@@ -23,7 +25,7 @@ export function IconButton({
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.5 }]}>
-      <Feather name={icon} size={22} color={colors.ink} />
+      <Feather name={icon} size={22} color={color} />
     </Pressable>
   );
 }

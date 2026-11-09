@@ -52,6 +52,10 @@ type SheetProps = {
   onSelect: (role: AssignableRole) => void;
   onRemove: () => void;
   onClose: () => void;
+  /** Defaults to "Remove from workspace". */
+  removeLabel?: string;
+  /** Defaults to the workspace role descriptions. */
+  descriptions?: Record<AssignableRole, string>;
 };
 
 /** Radio cards with each role's name and description (Invite members, role sheet). */
@@ -59,10 +63,12 @@ export function RoleOptions({
   options,
   value,
   onChange,
+  descriptions = ROLE_DESCRIPTION,
 }: {
   options: AssignableRole[];
   value: Role;
   onChange: (role: AssignableRole) => void;
+  descriptions?: Record<AssignableRole, string>;
 }) {
   return (
     <View accessibilityRole="radiogroup" style={styles.options}>
@@ -73,7 +79,7 @@ export function RoleOptions({
             key={role}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
-            accessibilityLabel={`${ROLE_LABEL[role]}. ${ROLE_DESCRIPTION[role]}`}
+            accessibilityLabel={`${ROLE_LABEL[role]}. ${descriptions[role]}`}
             onPress={() => onChange(role)}
             style={({ pressed }) => [
               styles.option,
@@ -85,7 +91,7 @@ export function RoleOptions({
             </View>
             <View style={styles.flex}>
               <AppText style={styles.optionTitle}>{ROLE_LABEL[role]}</AppText>
-              <AppText variant="small">{ROLE_DESCRIPTION[role]}</AppText>
+              <AppText variant="small">{descriptions[role]}</AppText>
             </View>
           </Pressable>
         );
@@ -103,6 +109,8 @@ export function RoleSheet({
   onSelect,
   onRemove,
   onClose,
+  removeLabel = 'Remove from workspace',
+  descriptions,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -116,13 +124,18 @@ export function RoleSheet({
           <AppText variant="heading" style={styles.sheetTitle}>
             {title}
           </AppText>
-          <RoleOptions options={options} value={current} onChange={onSelect} />
+          <RoleOptions
+            options={options}
+            value={current}
+            onChange={onSelect}
+            descriptions={descriptions}
+          />
           <Pressable
             accessibilityRole="button"
             onPress={onRemove}
             style={({ pressed }) => [styles.remove, pressed && styles.pressed]}>
             <Feather name="user-x" size={18} color={colors.danger} />
-            <Text style={styles.removeText}>Remove from workspace</Text>
+            <Text style={styles.removeText}>{removeLabel}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

@@ -33,3 +33,7 @@ export function expiresIn(iso: string, now = Date.now()) {
   if (days <= 0) return 'expires today';
   return `expires in ${plural(days, 'day')}`;
 }
+
+/** "Oct 27" */
+export const shortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

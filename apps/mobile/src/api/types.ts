@@ -72,3 +72,32 @@ export type InvitePreview = {
 
 /** POST /invitations/:token/accept */
 export type AcceptedInvite = { workspaceId: string; name: string; role: AssignableRole };
+
+// ---------- Boards ----------
+
+export type BoardVisibility = 'WORKSPACE' | 'PRIVATE';
+
+/** A board row as PATCH / archive / restore return it (no `role`). */
+export type BoardFields = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  color: string;
+  visibility: BoardVisibility;
+  createdById: string;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A board as seen by the current user: `role` is their effective board role. */
+export type Board = BoardFields & { role: Role };
+
+export type BoardMember = {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  role: Role;
+  addedAt: string;
+};

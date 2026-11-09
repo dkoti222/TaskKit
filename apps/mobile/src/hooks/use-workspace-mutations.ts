@@ -3,7 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AssignableRole, Member, Workspace } from '@/api/types';
 import {
   changeMemberRole,
+  leaveWorkspace,
   removeMember,
+  transferOwnership,
   revokeInvitation,
   updateWorkspace,
 } from '@/api/workspaces';
@@ -78,5 +80,34 @@ export function useRevokeInvitation(workspaceId: string) {
   return useMutation({
     mutationFn: (invitationId: string) => revokeInvitation(workspaceId, invitationId),
     onSettled: refresh,
+  });
+}
+
+/**
+ * POST /workspaces/:id/transfer-ownership. Our role changes (Owner -> Admin), and so do our
+ * effective roles on every board, so refresh all workspace and board queries.
+ */
+export function useTransferOwnership(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => transferOwnership(workspaceId, userId),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['boards'] }),
+      ]),
+  });
+}
+
+/**
+ * POST /workspaces/:id/leave. The caller navigates home on success. Only the home list is
+ * refreshed: removing this workspace's queries while its screens are still mounted would make
+ * them refetch and flash "no access". The cache drops them on its own once they're unused.
+ */
+export function useLeaveWorkspace(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => leaveWorkspace(workspaceId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: workspaceKeys.list(), exact: true }),
   });
 }

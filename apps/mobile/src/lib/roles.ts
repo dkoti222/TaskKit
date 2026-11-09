@@ -36,3 +36,20 @@ export function canManageMember(
   if (target.role === 'ADMIN') return actor.role === 'OWNER';
   return true;
 }
+
+// ---------- Boards ----------
+
+/** Workspace roles that may create boards. */
+export const canCreateBoard = (workspaceRole: Role | undefined) =>
+  workspaceRole === 'OWNER' || workspaceRole === 'ADMIN' || workspaceRole === 'MEMBER';
+
+/** Effective board roles that may edit, archive, restore and manage board members. */
+export const canManageBoard = (boardRole: Role | undefined) =>
+  boardRole === 'OWNER' || boardRole === 'ADMIN';
+
+/** What each role can do on one board (role sheet and Add people). */
+export const BOARD_ROLE_DESCRIPTION: Record<AssignableRole, string> = {
+  ADMIN: 'Edit board settings, manage board members, archive.',
+  MEMBER: 'Create, edit and move cards. Comment.',
+  VIEWER: 'Read-only access to this board.',
+};

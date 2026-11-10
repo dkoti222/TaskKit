@@ -13,6 +13,9 @@ export const boardKeys = {
   all: ['boards'] as const,
   detail: (id: string) => [...boardKeys.all, id] as const,
   members: (id: string) => [...boardKeys.all, id, 'members'] as const,
+  /** GET /boards/:id/content (lists and cards). */
+  content: (id: string) => [...boardKeys.all, id, 'content'] as const,
+  labels: (id: string) => [...boardKeys.all, id, 'labels'] as const,
   /** Prefix for both the active and the archived list of one workspace. */
   lists: (workspaceId: string) => [...workspaceKeys.detail(workspaceId), 'boards'] as const,
   list: (workspaceId: string, archived: boolean) =>

@@ -101,3 +101,80 @@ export type BoardMember = {
   role: Role;
   addedAt: string;
 };
+
+// ---------- Lists and cards ----------
+
+/** A person as cards show them (assignees). */
+export type CardPerson = { id: string; name: string; avatarUrl: string | null; email?: string };
+
+export type Label = {
+  id: string;
+  boardId: string;
+  name: string;
+  color: string;
+  createdAt?: string;
+};
+
+/** A card as GET /boards/:id/content returns it (enough for the card face). */
+export type CardSummary = {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  position: number;
+  /** Bumped on every change. Moves send it back; a mismatch is 409. */
+  version: number;
+  assignees: CardPerson[];
+  labels: Label[];
+  checklist: { total: number; done: number };
+};
+
+export type BoardList = { id: string; name: string; position: number; cards: CardSummary[] };
+
+/** GET /boards/:id/content — `board.role` is the current user's effective role. */
+export type BoardContent = { board: Board; lists: BoardList[] };
+
+/** A list row as POST/PATCH /lists return it. */
+export type ListFields = {
+  id: string;
+  boardId: string;
+  name: string;
+  position: number;
+  archivedAt: string | null;
+};
+
+/** A card row as POST/PATCH /cards and archive return it. */
+export type CardFields = {
+  id: string;
+  listId: string;
+  title: string;
+  description: string | null;
+  dueAt: string | null;
+  position: number;
+  version: number;
+  archivedAt: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChecklistItem = {
+  id: string;
+  cardId: string;
+  text: string;
+  done: boolean;
+  position: number;
+};
+
+/** GET /cards/:id */
+export type CardDetail = CardFields & {
+  list: { id: string; name: string; boardId: string };
+  createdBy: CardPerson;
+  assignees: CardPerson[];
+  labels: Label[];
+  checklistItems: ChecklistItem[];
+};
+
+/** PATCH /cards/:id/move */
+export type MovedCard = { id: string; listId: string; position: number; version: number };
+/** PATCH /lists/:id/move */
+export type MovedList = { id: string; position: number };

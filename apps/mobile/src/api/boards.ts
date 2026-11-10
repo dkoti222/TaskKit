@@ -4,7 +4,9 @@ import type {
   Board,
   BoardFields,
   BoardMember,
+  BoardContent,
   BoardVisibility,
+  Label,
   MessageResponse,
 } from './types';
 
@@ -66,5 +68,25 @@ export async function setBoardMemberRole(boardId: string, userId: string, role: 
 /** Board Owner, Admin. */
 export async function removeBoardMember(boardId: string, userId: string) {
   const { data } = await api.delete<MessageResponse>(`/boards/${boardId}/members/${userId}`);
+  return data;
+}
+
+// ---------- Board content and labels ----------
+
+/** Lists (by position) with their cards (by position). `board.role` is your effective role. */
+export async function getBoardContent(boardId: string) {
+  const { data } = await api.get<BoardContent>(`/boards/${boardId}/content`);
+  return data;
+}
+
+/** Every role can read the board's labels. */
+export async function listLabels(boardId: string) {
+  const { data } = await api.get<Label[]>(`/boards/${boardId}/labels`);
+  return data;
+}
+
+/** Board Owner, Admin. `color` must be a hex colour like #D9465A. */
+export async function createLabel(boardId: string, body: { name: string; color: string }) {
+  const { data } = await api.post<Label>(`/boards/${boardId}/labels`, body);
   return data;
 }

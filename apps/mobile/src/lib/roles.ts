@@ -53,3 +53,13 @@ export const BOARD_ROLE_DESCRIPTION: Record<AssignableRole, string> = {
   MEMBER: 'Create, edit and move cards. Comment.',
   VIEWER: 'Read-only access to this board.',
 };
+
+// ---------- Lists and cards ----------
+
+/** Create, rename, archive and move lists and cards; assign, label and tick checklists. */
+export const canEditCards = (boardRole: Role | undefined) =>
+  boardRole === 'OWNER' || boardRole === 'ADMIN' || boardRole === 'MEMBER';
+
+/** Create and delete board labels. */
+export const canManageLabels = (boardRole: Role | undefined) =>
+  boardRole === 'OWNER' || boardRole === 'ADMIN';

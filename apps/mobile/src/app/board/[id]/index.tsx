@@ -31,6 +31,7 @@ import { useMe } from '@/hooks/use-me';
 import { useMoveCard, useMoveList } from '@/hooks/use-move';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { dueState, tint } from '@/lib/format';
+import { canEditCards } from '@/lib/roles';
 import { colors, fonts, spacing } from '@/theme';
 
 type Filter =
@@ -63,6 +64,11 @@ export default function BoardScreen() {
   const hideToast = useCallback(() => setToast(null), []);
 
   const info = content.data?.board ?? board.data;
+  // 14 · Board (Viewer): the role comes from GET /boards/:id/content (`board.role`).
+  // Until it's known we show nothing editable.
+  const role = info?.role;
+  const editable = canEditCards(role);
+  const isViewer = role === 'VIEWER';
   const color = info?.color ?? colors.primary;
   const cachedLists = content.data?.lists;
   // Keep a dropped list order until the cache changes (see ListColumn for why).
@@ -135,6 +141,15 @@ export default function BoardScreen() {
         />
       </View>
     );
+  } else if (!lists?.length && !editable) {
+    body = (
+      <View style={styles.errorCard}>
+        <Feather name="trello" size={22} color={colors.muted} />
+        <AppText variant="secondary" style={styles.center}>
+          This board has no lists yet.
+        </AppText>
+      </View>
+    );
   } else if (!lists?.length) {
     body = (
       <ScrollView keyboardShouldPersistTaps="handled">
@@ -167,9 +182,9 @@ export default function BoardScreen() {
             filtered={!!filterCards}
             width={columnWidth}
             maxHeight={columnMax}
-            editable
-            dragCards={!filterCards}
-            onDragList={drag}
+            editable={editable}
+            dragCards={editable && !filterCards}
+            onDragList={editable ? drag : undefined}
             listActive={isActive}
             onMoveCard={(card, index) => onMoveCard(item, card, index)}
           />
@@ -180,12 +195,14 @@ export default function BoardScreen() {
           moveList.mutate({ listId: data[to].id, index: to }, { onError: showError });
         }}
         ListFooterComponent={
-          <AddListTile
-            width={columnWidth}
-            onAdd={(name, done) => addLists([name], done)}
-            pending={createLists.isPending}
-            error={listsError}
-          />
+          editable ? (
+            <AddListTile
+              width={columnWidth}
+              onAdd={(name, done) => addLists([name], done)}
+              pending={createLists.isPending}
+              error={listsError}
+            />
+          ) : undefined
         }
       />
     );
@@ -228,7 +245,14 @@ export default function BoardScreen() {
               </AppText>
             ) : null}
           </View>
-          {info ? (
+          {isViewer ? (
+            <View
+              style={styles.viewOnly}
+              accessibilityLabel="View only. You're a Viewer on this board.">
+              <Feather name="eye" size={14} color={color} />
+              <Text style={[styles.viewOnlyText, { color }]}>View only</Text>
+            </View>
+          ) : info ? (
             <IconButton
               icon="more-horizontal"
               label="Board settings"
@@ -237,7 +261,7 @@ export default function BoardScreen() {
             />
           ) : null}
         </View>
-        {lists?.length ? (
+        {lists?.length && !isViewer ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -259,6 +283,15 @@ export default function BoardScreen() {
           </ScrollView>
         ) : null}
       </SafeAreaView>
+
+      {isViewer ? (
+        <View style={styles.viewerNote}>
+          <AppText variant="secondary" style={styles.viewerNoteText}>
+            You{'’'}re a Viewer on this board. You can open cards but can{'’'}t add, move or edit
+            them. Ask an Admin for access.
+          </AppText>
+        </View>
+      ) : null}
 
       <View style={styles.flex} onLayout={(e) => setBodyHeight(e.nativeEvent.layout.height)}>
         {body}
@@ -358,6 +391,27 @@ const styles = StyleSheet.create({
     height: 30,
     justifyContent: 'center',
   },
+  viewOnly: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    height: 30,
+    marginRight: spacing.sm,
+  },
+  viewOnlyText: { fontFamily: fonts.semibold, fontSize: 13 },
+  viewerNote: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(22,24,29,0.08)',
+    padding: spacing.md,
+  },
+  viewerNoteText: { fontSize: 14, lineHeight: 20 },
   chipSelected: { backgroundColor: colors.surface, borderColor: colors.surface },
   chipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.surface },
   lists: { padding: spacing.md, alignItems: 'flex-start' },

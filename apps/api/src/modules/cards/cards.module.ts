@@ -5,12 +5,16 @@ import { CardsService } from './cards.service';
 import { CardExtrasService } from './card-extras.service';
 import { BoardContentController, ListsController } from './lists.controller';
 import { CardsController, ListCardsController } from './cards.controller';
+import { MoveService } from './move.service';
+import { MoveController } from './move.controller';
+
 import {
   BoardLabelsController,
   CardExtrasController,
   ChecklistItemsController,
   LabelsController,
 } from './card-extras.controller';
+
 
 @Module({
   imports: [BoardsModule],
@@ -24,6 +28,6 @@ import {
     LabelsController,
     ChecklistItemsController,
   ],
-  providers: [ListsService, CardsService, CardExtrasService],
+  providers: [ListsService, CardsService, CardExtrasService, MoveService],
 })
 export class CardsModule {}

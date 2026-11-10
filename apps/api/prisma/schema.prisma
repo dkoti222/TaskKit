@@ -30,6 +30,8 @@ model User {
   invitationsSent      Invitation[]        @relation("InvitationsSent")
   createdBoards        Board[]             @relation("BoardCreator")
   boardMemberships     BoardMember[]
+  createdCards         Card[]              @relation("CardCreator")
+  cardAssignments      CardAssignee[]
 
   @@map("users")
 }
@@ -161,6 +163,8 @@ model Board {
   workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdBy User          @relation("BoardCreator", fields: [createdById], references: [id])
   members   BoardMember[]
+  lists     List[]
+  labels    Label[]
 
   @@index([workspaceId])
   @@map("boards")
@@ -178,4 +182,95 @@ model BoardMember {
   @@id([boardId, userId])
   @@index([userId])
   @@map("board_members")
+}
+
+// ---------- Lists and cards ----------
+
+model List {
+  id         String    @id @default(uuid())
+  boardId    String    @map("board_id")
+  name       String
+  position   Float
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([boardId, position])
+  @@map("lists")
+}
+
+model Card {
+  id          String    @id @default(uuid())
+  listId      String    @map("list_id")
+  title       String
+  description String?
+  dueAt       DateTime? @map("due_at")
+  position    Float
+  version     Int       @default(1)
+  createdById String    @map("created_by_id")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  list           List            @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdBy      User            @relation("CardCreator", fields: [createdById], references: [id])
+  assignees      CardAssignee[]
+  labels         CardLabel[]
+  checklistItems ChecklistItem[]
+
+  @@index([listId, position])
+  @@map("cards")
+}
+
+model CardAssignee {
+  cardId String @map("card_id")
+  userId String @map("user_id")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+  @@map("card_assignees")
+}
+
+model Label {
+  id      String @id @default(uuid())
+  boardId String @map("board_id")
+  name    String
+  color   String
+
+  board Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards CardLabel[]
+
+  @@index([boardId])
+  @@map("labels")
+}
+
+model CardLabel {
+  cardId  String @map("card_id")
+  labelId String @map("label_id")
+
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@map("card_labels")
+}
+
+model ChecklistItem {
+  id        String   @id @default(uuid())
+  cardId    String   @map("card_id")
+  text      String
+  done      Boolean  @default(false)
+  position  Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, position])
+  @@map("checklist_items")
 }

@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
-import type { CardDetail, CardPerson, Label } from '@/api/types';
+import type { BoardList, CardDetail, CardPerson, Label } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { BoardAccessRemoved, useBoardAccessLost } from '@/components/board-access';
 import { Button } from '@/components/button';
@@ -26,6 +26,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DueDateField } from '@/components/due-date-field';
 import { InfoNote } from '@/components/info-note';
 import { IconButton } from '@/components/misc';
+import { MoveCardSheet } from '@/components/move-card-sheet';
 import { LabelPicker, PickerStatus } from '@/components/pickers';
 import { Sheet } from '@/components/sheet';
 import { MemberAvatar, RoleBadge } from '@/components/workspace-ui';
@@ -123,6 +124,7 @@ export default function CardDetailScreen() {
       card={card.data}
       boardId={boardId}
       boardName={board?.name ?? cached?.name ?? ''}
+      lists={content.data?.lists ?? []}
       editable={canEditCards(board?.role)}
       canCreateLabels={canManageLabels(board?.role)}
       shell={shell}
@@ -136,6 +138,7 @@ function CardBody({
   card,
   boardId,
   boardName,
+  lists,
   editable: canEdit,
   canCreateLabels,
   shell,
@@ -145,6 +148,7 @@ function CardBody({
   card: CardDetail;
   boardId: string;
   boardName: string;
+  lists: BoardList[];
   editable: boolean;
   canCreateLabels: boolean;
   shell: (
@@ -171,6 +175,9 @@ function CardBody({
   const [sheet, setSheet] = useState<'members' | 'labels' | null>(null);
   const [menu, setMenu] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [moving, setMoving] = useState(false);
+  // The board cache has the version the move API checks (it's bumped there by every change).
+  const summary = lists.flatMap((l) => l.cards).find((c) => c.id === card.id);
 
   const saveTitle = () => {
     if (title === null) return;
@@ -190,13 +197,20 @@ function CardBody({
     );
   };
 
+  // The "Board · List" pill opens 26 · Move card for people who can edit.
   const center = (
-    <View style={styles.where} accessibilityLabel={`In ${boardName}, list ${card.list.name}`}>
+    <Pressable
+      disabled={!editable || !summary}
+      onPress={() => setMoving(true)}
+      accessibilityRole={editable ? 'button' : undefined}
+      accessibilityLabel={`In ${boardName}, list ${card.list.name}${editable ? '. Move card' : ''}`}
+      style={({ pressed }) => [styles.where, pressed && { opacity: 0.6 }]}>
       <Text style={styles.whereText} numberOfLines={1}>
         {boardName ? `${boardName} · ` : ''}
         {card.list.name}
       </Text>
-    </View>
+      {editable && summary ? <Feather name="chevron-down" size={16} color={colors.muted} /> : null}
+    </Pressable>
   );
 
   const right = editable ? (
@@ -350,6 +364,18 @@ function CardBody({
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {summary ? (
+        <MoveCardSheet
+          visible={moving}
+          onClose={() => setMoving(false)}
+          boardId={boardId}
+          boardName={boardName}
+          lists={lists}
+          card={{ id: card.id, title: card.title, version: summary.version, listId: card.list.id }}
+          onError={showError}
+        />
+      ) : null}
 
       <MembersSheet
         visible={sheet === 'members'}

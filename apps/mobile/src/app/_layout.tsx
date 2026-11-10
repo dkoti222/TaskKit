@@ -61,6 +61,7 @@ export default function RootLayout() {
             <Stack.Screen name="board/[id]/settings" />
             <Stack.Screen name="board/[id]/add-people" options={{ presentation: 'modal' }} />
             <Stack.Screen name="board/[id]/new-card" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="board/[id]/card/[cardId]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="join" options={{ presentation: 'modal' }} />
           </Stack.Protected>
 

@@ -187,6 +187,12 @@ export default function BoardScreen() {
             onDragList={editable ? drag : undefined}
             listActive={isActive}
             onMoveCard={(card, index) => onMoveCard(item, card, index)}
+            onCardPress={(card) =>
+              router.push({
+                pathname: '/board/[id]/card/[cardId]',
+                params: { id, cardId: card.id },
+              })
+            }
             onAddCard={() =>
               router.push({ pathname: '/board/[id]/new-card', params: { id, listId: item.id } })
             }

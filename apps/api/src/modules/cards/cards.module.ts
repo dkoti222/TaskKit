@@ -27,6 +27,7 @@ import {
     BoardLabelsController,
     LabelsController,
     ChecklistItemsController,
+    MoveController,
   ],
   providers: [ListsService, CardsService, CardExtrasService, MoveService],
 })

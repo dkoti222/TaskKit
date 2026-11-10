@@ -65,3 +65,20 @@
 - You can't change or remove your own board role.
 - Removing someone from a PRIVATE board removes their access;
   on a WORKSPACE board they fall back to their workspace role.
+
+
+  # Lists and cards permissions
+
+Uses your effective board role.
+
+| Action                                     | Owner | Admin | Member | Viewer |
+|--------------------------------------------|:-----:|:-----:|:------:|:------:|
+| View lists, cards, labels, checklists      |  ✅   |  ✅   |   ✅   |   ✅   |
+| Create, rename, archive lists              |  ✅   |  ✅   |   ✅   |   ❌   |
+| Create, edit, archive cards                |  ✅   |  ✅   |   ✅   |   ❌   |
+| Assign people, add labels, edit checklist  |  ✅   |  ✅   |   ✅   |   ❌   |
+| Create and delete board labels             |  ✅   |  ✅   |   ❌   |   ❌   |
+
+- Viewers are read-only on everything.
+- Only people with access to the board (and not Viewers) can be assigned to a card.
+- Archived lists and cards are hidden but can be restored.

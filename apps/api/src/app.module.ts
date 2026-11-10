@@ -9,6 +9,7 @@
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { BoardsModule } from './modules/boards/boards.module';
+import { CardsModule } from './modules/cards/cards.module';
 
   @Module({
     imports: [
@@ -21,6 +22,7 @@ import { BoardsModule } from './modules/boards/boards.module';
       AuthModule,
       WorkspacesModule,
       BoardsModule,
+      CardsModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

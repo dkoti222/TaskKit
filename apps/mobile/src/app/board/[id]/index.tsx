@@ -22,6 +22,7 @@ import { BoardAccessRemoved, useBoardAccessLost } from '@/components/board-acces
 import { AddListTile, COLUMN_GAP, FirstListCard, ListColumn } from '@/components/board-columns';
 import { Button } from '@/components/button';
 import { LabelChip, Toast } from '@/components/card-ui';
+import { ListActionsSheet } from '@/components/list-actions-sheet';
 import { IconButton } from '@/components/misc';
 import { Sheet } from '@/components/sheet';
 import { useBoardContent, useLabels } from '@/hooks/use-board-content';
@@ -59,6 +60,7 @@ export default function BoardScreen() {
 
   const [filter, setFilter] = useState<Filter>({ kind: 'all' });
   const [labelSheet, setLabelSheet] = useState(false);
+  const [menuListId, setMenuListId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [bodyHeight, setBodyHeight] = useState(0);
   const hideToast = useCallback(() => setToast(null), []);
@@ -116,6 +118,9 @@ export default function BoardScreen() {
       { cardId: card.id, listId: list.id, index, version: card.version },
       { onError: showError },
     );
+
+  const openNewCard = (list: BoardList) =>
+    router.push({ pathname: '/board/[id]/new-card', params: { id, listId: list.id } });
 
   const addLists = (names: string[], done?: () => void) =>
     createLists.mutate(names, { onSuccess: () => done?.() });
@@ -193,9 +198,8 @@ export default function BoardScreen() {
                 params: { id, cardId: card.id },
               })
             }
-            onAddCard={() =>
-              router.push({ pathname: '/board/[id]/new-card', params: { id, listId: item.id } })
-            }
+            onAddCard={() => openNewCard(item)}
+            onMenu={() => setMenuListId(item.id)}
           />
         )}
         onDragEnd={({ data, from, to }) => {
@@ -307,6 +311,19 @@ export default function BoardScreen() {
       </View>
 
       <Toast message={toast} onHide={hideToast} />
+
+      {editable ? (
+        <ListActionsSheet
+          list={cachedLists?.find((l) => l.id === menuListId) ?? null}
+          index={cachedLists?.findIndex((l) => l.id === menuListId) ?? 0}
+          total={cachedLists?.length ?? 0}
+          boardId={id}
+          boardName={info?.name ?? ''}
+          onClose={() => setMenuListId(null)}
+          onAddCard={openNewCard}
+          onError={showError}
+        />
+      ) : null}
 
       <LabelFilterSheet
         visible={labelSheet}

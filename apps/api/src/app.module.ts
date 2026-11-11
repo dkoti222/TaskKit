@@ -10,12 +10,15 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { BoardsModule } from './modules/boards/boards.module';
 import { CardsModule } from './modules/cards/cards.module';
+import { EventsModule } from './common/events/events.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
   @Module({
     imports: [
       ConfigModule.forRoot({ isGlobal: true }),
       ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
       PrismaModule,
+      EventsModule,
       HealthModule,
       UsersModule,
       MailModule,
@@ -23,6 +26,7 @@ import { CardsModule } from './modules/cards/cards.module';
       WorkspacesModule,
       BoardsModule,
       CardsModule,
+      RealtimeModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

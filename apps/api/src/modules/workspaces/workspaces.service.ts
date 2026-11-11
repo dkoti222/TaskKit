@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { DomainEvents } from '../../common/events/domain-events.service';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
 
   async create(userId: string, dto: CreateWorkspaceDto) {
     const workspace = await this.prisma.workspace.create({
@@ -67,7 +71,17 @@ export class WorkspacesService {
     });
   }
 
-  async remove(workspaceId: string) {
+  async remove(actorId: string, workspaceId: string) {
+    const boards = await this.prisma.board.findMany({
+      where: { workspaceId },
+      select: { id: true },
+    });
     await this.prisma.workspace.delete({ where: { id: workspaceId } });
+    this.events.emit({
+      type: 'workspace.deleted',
+      workspaceId,
+      actorId,
+      data: { boardIds: boards.map((b) => b.id) },
+    });
   }
 }

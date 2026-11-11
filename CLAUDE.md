@@ -8,7 +8,7 @@ The owner is learning **backend** development by writing `apps/api` himself. Fro
 
 ```
 TaskKit/
-├── apps/api/        NestJS 12 + Prisma 7 + PostgreSQL (written by the owner; do not edit unless asked,
+├── apps/api/        NestJS 12 + Prisma 7 + PostgreSQL + Socket.IO (written by the owner; do not edit unless asked,
 │                    except for the steps in docs/plan-steps-9-14.md)
 ├── apps/mobile/     Expo (React Native) app with Expo Router — Claude's area
 └── docs/
@@ -130,6 +130,54 @@ user's role on a board), stop and tell the owner.
 - `version` is the card's current version from the last fetch. Every card change bumps it.
 - **409** = someone else changed the card first. Undo the optimistic move, refetch the board
   content, and show "This card was changed by someone else."
+
+### Realtime (Socket.IO, Step 9)
+Same host and port as the API, default path `/socket.io` (no `/api/v1` prefix). Use
+`socket.io-client` v4.
+
+**Connect:** `io('http://<mac-ip>:3000', { auth: { token: <accessToken> } })`
+- Missing, bad or expired token → `connect_error` with `message: "unauthorized"`.
+  Refresh the token, then connect again.
+- When the access token expires while connected, the server sends `auth:expired` and
+  disconnects (reason `io server disconnect`, which does **not** auto-reconnect). Refresh, set
+  the new token in `socket.auth`, and call `socket.connect()`.
+
+**Client → server (use acknowledgements: `socket.emitWithAck(...)`)**
+| Event | Payload | Reply |
+|---|---|---|
+| `board:join` | `{ boardId }` | `{ ok: true, role }` · `{ ok: false, error: "Not found" }` (no access) · `{ ok: false, error: "boardId must be a UUID" }` |
+| `board:leave` | `{ boardId }` | `{ ok: true }` |
+
+Rooms are lost when the socket reconnects: join again after every `connect`.
+
+**Server → client**
+| Event | Payload | Meaning |
+|---|---|---|
+| `board:event` | `{ type, boardId, actorId, data }` | Something changed on a board you joined |
+| `board:access-removed` | `{ boardId }` | You lost access (or the board/workspace was deleted). You're out of the room. Go to screen 31 |
+| `auth:expired` | — | Token expired; the server disconnects right after |
+
+`board:event` types and their `data`:
+| type | data |
+|---|---|
+| `card.created` | `{ cardId, listId }` |
+| `card.updated` | `{ cardId, version }` |
+| `card.archived` | `{ cardId, archived }` (false = restored) |
+| `card.moved` | `{ cardId, listId, position, version }` |
+| `list.created` / `list.updated` | `{ listId, name }` |
+| `list.archived` | `{ listId, archived }` |
+| `list.moved` | `{ listId, position }` |
+| `card.assignee.added` / `card.assignee.removed` | `{ cardId, userId }` |
+| `card.label.added` / `card.label.removed` | `{ cardId, labelId }` |
+| `checklist.changed` | `{ cardId, itemId }` |
+| `label.created` / `label.deleted` | `{ labelId }` |
+| `board.updated` | `{ changes }` (fields from PATCH, or `{ archived }`) |
+| `board.member.changed` | `{ userId, role }` (role `null` = removed from the board) |
+| `workspace.member.changed` | `{ userId, role }` (role `null` = left or removed). Sent to every board room of that workspace; roles may have changed |
+
+- Events are sent to everyone in the room, **including the person who made the change**.
+  Ignore events whose `actorId` is the current user (already applied optimistically).
+- Events are sent only after the write succeeded. A refused write (403, 409…) sends nothing.
 
 ### Errors and roles in the app
 - **403** wrong role → show "You don't have permission to do that." and refetch.

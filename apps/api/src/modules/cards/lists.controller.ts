@@ -16,6 +16,8 @@ import { BoardRoleGuard } from '../boards/guards/board-role.guard';
 import { BoardRoles } from '../boards/decorators/board-roles.decorator';
 import { CurrentBoard } from '../boards/decorators/current-board.decorator';
 import type { BoardAccess } from '../boards/board-access.service';
+import { CurrentActor } from '../boards/decorators/current-actor.decorator';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 @ApiTags('lists')
 @ApiBearerAuth()
@@ -31,8 +33,12 @@ export class BoardContentController {
 
   @Post('lists')
   @BoardRoles('OWNER', 'ADMIN', 'MEMBER')
-  create(@Param('boardId', ParseUUIDPipe) boardId: string, @Body() dto: CreateListDto) {
-    return this.lists.create(boardId, dto.name);
+  create(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('boardId', ParseUUIDPipe) _boardId: string,
+    @Body() dto: CreateListDto,
+  ) {
+    return this.lists.create(actor, dto.name);
   }
 }
 
@@ -45,19 +51,23 @@ export class ListsController {
   constructor(private readonly lists: ListsService) {}
 
   @Patch()
-  rename(@Param('listId', ParseUUIDPipe) listId: string, @Body() dto: CreateListDto) {
-    return this.lists.rename(listId, dto.name);
+  rename(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @Body() dto: CreateListDto,
+  ) {
+    return this.lists.rename(actor, listId, dto.name);
   }
 
   @Post('archive')
   @HttpCode(200)
-  archive(@Param('listId', ParseUUIDPipe) listId: string) {
-    return this.lists.setArchived(listId, true);
+  archive(@CurrentActor() actor: BoardEventContext, @Param('listId', ParseUUIDPipe) listId: string) {
+    return this.lists.setArchived(actor, listId, true);
   }
 
   @Post('restore')
   @HttpCode(200)
-  restore(@Param('listId', ParseUUIDPipe) listId: string) {
-    return this.lists.setArchived(listId, false);
+  restore(@CurrentActor() actor: BoardEventContext, @Param('listId', ParseUUIDPipe) listId: string) {
+    return this.lists.setArchived(actor, listId, false);
   }
 }

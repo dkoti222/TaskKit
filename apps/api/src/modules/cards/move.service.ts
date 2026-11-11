@@ -7,15 +7,21 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { POSITION_GAP, positionAt } from '../../common/utils/position';
 import { MoveCardDto } from './dto/move-card.dto';
+import { DomainEvents } from '../../common/events/domain-events.service';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 const CONFLICT_MSG = 'This card was changed by someone else. Refresh and try again.';
 
 @Injectable()
 export class MoveService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
 
-  moveCard(boardId: string, cardId: string, dto: MoveCardDto) {
-    return this.prisma.$transaction(async (tx) => {
+  async moveCard(ctx: BoardEventContext, cardId: string, dto: MoveCardDto) {
+    const boardId = ctx.boardId;
+    const moved = await this.prisma.$transaction(async (tx) => {
       // 1. The card must exist, and the app must have its latest version
       const card = await tx.card.findUnique({
         where: { id: cardId },
@@ -64,15 +70,29 @@ export class MoveService {
       });
       if (result.count === 0) throw new ConflictException(CONFLICT_MSG);
 
-      return tx.card.findUnique({
+      return tx.card.findUniqueOrThrow({
         where: { id: cardId },
         select: { id: true, listId: true, position: true, version: true },
       });
     });
+
+    // After the transaction has committed, tell everyone else.
+    this.events.emit({
+      ...ctx,
+      type: 'card.moved',
+      data: {
+        cardId,
+        listId: moved.listId,
+        position: moved.position,
+        version: moved.version,
+      },
+    });
+    return moved;
   }
 
-  moveList(boardId: string, listId: string, newIndex: number) {
-    return this.prisma.$transaction(async (tx) => {
+  async moveList(ctx: BoardEventContext, listId: string, newIndex: number) {
+    const boardId = ctx.boardId;
+    const moved = await this.prisma.$transaction(async (tx) => {
       const list = await tx.list.findUnique({
         where: { id: listId },
         select: { archivedAt: true },
@@ -106,5 +126,8 @@ export class MoveService {
         select: { id: true, position: true },
       });
     });
+
+    this.events.emit({ ...ctx, type: 'list.moved', data: { listId, position: moved.position } });
+    return moved;
   }
 }

@@ -4,6 +4,8 @@ import { BoardAccessService } from '../boards/board-access.service';
 import { nextPosition } from '../../common/utils/position';
 import { CreateLabelDto } from './dto/create-label.dto';
 import { UpdateChecklistItemDto } from './dto/checklist-item.dto';
+import { DomainEvents } from '../../common/events/domain-events.service';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 const userFields = { id: true, name: true, avatarUrl: true } as const;
 
@@ -12,11 +14,12 @@ export class CardExtrasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: BoardAccessService,
+    private readonly events: DomainEvents,
   ) {}
 
   // ---------- Assignees ----------
-  async addAssignee(boardId: string, cardId: string, userId: string) {
-    const target = await this.access.resolve(boardId, userId);
+  async addAssignee(ctx: BoardEventContext, cardId: string, userId: string) {
+    const target = await this.access.resolve(ctx.boardId, userId);
     if (!target || target.role === 'VIEWER') {
       throw new BadRequestException("This person can't be assigned on this board");
     }
@@ -26,12 +29,14 @@ export class CardExtrasService {
       update: {},
     });
     await this.bumpVersion(cardId);
+    this.events.emit({ ...ctx, type: 'card.assignee.added', data: { cardId, userId } });
     return this.listAssignees(cardId);
   }
 
-  async removeAssignee(cardId: string, userId: string) {
+  async removeAssignee(ctx: BoardEventContext, cardId: string, userId: string) {
     await this.prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
     await this.bumpVersion(cardId);
+    this.events.emit({ ...ctx, type: 'card.assignee.removed', data: { cardId, userId } });
     return this.listAssignees(cardId);
   }
 
@@ -48,17 +53,22 @@ export class CardExtrasService {
     return this.prisma.label.findMany({ where: { boardId }, orderBy: { name: 'asc' } });
   }
 
-  createLabel(boardId: string, dto: CreateLabelDto) {
-    return this.prisma.label.create({ data: { boardId, name: dto.name, color: dto.color } });
+  async createLabel(ctx: BoardEventContext, dto: CreateLabelDto) {
+    const label = await this.prisma.label.create({
+      data: { boardId: ctx.boardId, name: dto.name, color: dto.color },
+    });
+    this.events.emit({ ...ctx, type: 'label.created', data: { labelId: label.id } });
+    return label;
   }
 
-  async deleteLabel(labelId: string) {
+  async deleteLabel(ctx: BoardEventContext, labelId: string) {
     await this.prisma.label.delete({ where: { id: labelId } });
+    this.events.emit({ ...ctx, type: 'label.deleted', data: { labelId } });
   }
 
-  async addLabel(boardId: string, cardId: string, labelId: string) {
+  async addLabel(ctx: BoardEventContext, cardId: string, labelId: string) {
     const label = await this.prisma.label.findUnique({ where: { id: labelId } });
-    if (!label || label.boardId !== boardId) {
+    if (!label || label.boardId !== ctx.boardId) {
       throw new BadRequestException('That label is not on this board');
     }
     await this.prisma.cardLabel.upsert({
@@ -67,12 +77,14 @@ export class CardExtrasService {
       update: {},
     });
     await this.bumpVersion(cardId);
+    this.events.emit({ ...ctx, type: 'card.label.added', data: { cardId, labelId } });
     return this.listCardLabels(cardId);
   }
 
-  async removeLabel(cardId: string, labelId: string) {
+  async removeLabel(ctx: BoardEventContext, cardId: string, labelId: string) {
     await this.prisma.cardLabel.deleteMany({ where: { cardId, labelId } });
     await this.bumpVersion(cardId);
+    this.events.emit({ ...ctx, type: 'card.label.removed', data: { cardId, labelId } });
     return this.listCardLabels(cardId);
   }
 
@@ -85,22 +97,27 @@ export class CardExtrasService {
   }
 
   // ---------- Checklist ----------
-  async addItem(cardId: string, text: string) {
+  async addItem(ctx: BoardEventContext, cardId: string, text: string) {
     const last = await this.prisma.checklistItem.aggregate({
       where: { cardId },
       _max: { position: true },
     });
-    return this.prisma.checklistItem.create({
+    const item = await this.prisma.checklistItem.create({
       data: { cardId, text, position: nextPosition(last._max.position) },
     });
+    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId, itemId: item.id } });
+    return item;
   }
 
-  updateItem(itemId: string, dto: UpdateChecklistItemDto) {
-    return this.prisma.checklistItem.update({ where: { id: itemId }, data: dto });
+  async updateItem(ctx: BoardEventContext, itemId: string, dto: UpdateChecklistItemDto) {
+    const item = await this.prisma.checklistItem.update({ where: { id: itemId }, data: dto });
+    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId: item.cardId, itemId } });
+    return item;
   }
 
-  async deleteItem(itemId: string) {
-    await this.prisma.checklistItem.delete({ where: { id: itemId } });
+  async deleteItem(ctx: BoardEventContext, itemId: string) {
+    const item = await this.prisma.checklistItem.delete({ where: { id: itemId } });
+    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId: item.cardId, itemId } });
   }
 
   // ---------- Helper ----------

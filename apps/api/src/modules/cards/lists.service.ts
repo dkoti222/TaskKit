@@ -2,12 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { nextPosition } from '../../common/utils/position';
 import type { BoardAccess } from '../boards/board-access.service';
+import { DomainEvents } from '../../common/events/domain-events.service';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 const userFields = { id: true, name: true, avatarUrl: true } as const;
 
 @Injectable()
 export class ListsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
 
   async getBoardContent(access: BoardAccess) {
     const lists = await this.prisma.list.findMany({
@@ -49,24 +54,30 @@ export class ListsService {
     };
   }
 
-  async create(boardId: string, name: string) {
+  async create(ctx: BoardEventContext, name: string) {
     const last = await this.prisma.list.aggregate({
-      where: { boardId },
+      where: { boardId: ctx.boardId },
       _max: { position: true },
     });
-    return this.prisma.list.create({
-      data: { boardId, name, position: nextPosition(last._max.position) },
+    const list = await this.prisma.list.create({
+      data: { boardId: ctx.boardId, name, position: nextPosition(last._max.position) },
     });
+    this.events.emit({ ...ctx, type: 'list.created', data: { listId: list.id, name } });
+    return list;
   }
 
-  rename(listId: string, name: string) {
-    return this.prisma.list.update({ where: { id: listId }, data: { name } });
+  async rename(ctx: BoardEventContext, listId: string, name: string) {
+    const list = await this.prisma.list.update({ where: { id: listId }, data: { name } });
+    this.events.emit({ ...ctx, type: 'list.updated', data: { listId, name } });
+    return list;
   }
 
-  setArchived(listId: string, archived: boolean) {
-    return this.prisma.list.update({
+  async setArchived(ctx: BoardEventContext, listId: string, archived: boolean) {
+    const list = await this.prisma.list.update({
       where: { id: listId },
       data: { archivedAt: archived ? new Date() : null },
     });
+    this.events.emit({ ...ctx, type: 'list.archived', data: { listId, archived } });
+    return list;
   }
 }

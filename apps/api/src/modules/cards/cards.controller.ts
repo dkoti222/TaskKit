@@ -15,8 +15,8 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
 import { BoardRoles } from '../boards/decorators/board-roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthUser } from '../auth/decorators/current-user.decorator';
+import { CurrentActor } from '../boards/decorators/current-actor.decorator';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 @ApiTags('cards')
 @ApiBearerAuth()
@@ -28,11 +28,11 @@ export class ListCardsController {
   @Post()
   @BoardRoles('OWNER', 'ADMIN', 'MEMBER')
   create(
-    @CurrentUser() user: AuthUser,
+    @CurrentActor() actor: BoardEventContext,
     @Param('listId', ParseUUIDPipe) listId: string,
     @Body() dto: CreateCardDto,
   ) {
-    return this.cards.create(listId, user.id, dto);
+    return this.cards.create(actor, listId, dto);
   }
 }
 
@@ -50,21 +50,25 @@ export class CardsController {
 
   @Patch()
   @BoardRoles('OWNER', 'ADMIN', 'MEMBER')
-  update(@Param('cardId', ParseUUIDPipe) cardId: string, @Body() dto: UpdateCardDto) {
-    return this.cards.update(cardId, dto);
+  update(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: UpdateCardDto,
+  ) {
+    return this.cards.update(actor, cardId, dto);
   }
 
   @Post('archive')
   @HttpCode(200)
   @BoardRoles('OWNER', 'ADMIN', 'MEMBER')
-  archive(@Param('cardId', ParseUUIDPipe) cardId: string) {
-    return this.cards.setArchived(cardId, true);
+  archive(@CurrentActor() actor: BoardEventContext, @Param('cardId', ParseUUIDPipe) cardId: string) {
+    return this.cards.setArchived(actor, cardId, true);
   }
 
   @Post('restore')
   @HttpCode(200)
   @BoardRoles('OWNER', 'ADMIN', 'MEMBER')
-  restore(@Param('cardId', ParseUUIDPipe) cardId: string) {
-    return this.cards.setArchived(cardId, false);
+  restore(@CurrentActor() actor: BoardEventContext, @Param('cardId', ParseUUIDPipe) cardId: string) {
+    return this.cards.setArchived(actor, cardId, false);
   }
 }

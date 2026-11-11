@@ -58,8 +58,8 @@ export class WorkspacesController {
   @HttpCode(200)
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles('OWNER')
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.workspaces.remove(id);
+  async remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    await this.workspaces.remove(user.id, id);
     return { message: 'Workspace deleted' };
   }
     @Post(':id/transfer-ownership')

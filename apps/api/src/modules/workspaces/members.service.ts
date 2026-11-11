@@ -6,12 +6,26 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { WorkspaceMember } from '../../generated/prisma/client';
+import { DomainEvents } from '../../common/events/domain-events.service';
 
 const userFields = { id: true, name: true, email: true, avatarUrl: true } as const;
 
 @Injectable()
 export class MembersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
+
+  /** A workspace role change or removal can change what someone sees on its boards. */
+  private memberChanged(actorId: string, workspaceId: string, userId: string, role: string | null) {
+    this.events.emit({
+      type: 'workspace.member.changed',
+      workspaceId,
+      actorId,
+      data: { userId, role },
+    });
+  }
 
   async list(workspaceId: string) {
     const members = await this.prisma.workspaceMember.findMany({
@@ -47,6 +61,7 @@ export class MembersService {
       data: { role },
       include: { user: { select: userFields } },
     });
+    this.memberChanged(actor.userId, workspaceId, userId, role);
     return {
       userId: updated.userId,
       name: updated.user.name,
@@ -62,6 +77,7 @@ export class MembersService {
     await this.prisma.workspaceMember.delete({
       where: { workspaceId_userId: { workspaceId, userId } },
     });
+    this.memberChanged(actor.userId, workspaceId, userId, null);
   }
 
     async transferOwnership(actor: WorkspaceMember, workspaceId: string, newOwnerId: string) {
@@ -80,6 +96,8 @@ export class MembersService {
         data: { role: 'ADMIN' },
       }),
     ]);
+    this.memberChanged(actor.userId, workspaceId, newOwnerId, 'OWNER');
+    this.memberChanged(actor.userId, workspaceId, actor.userId, 'ADMIN');
 
     return { message: 'Ownership transferred. You are now an Admin.' };
   }
@@ -91,6 +109,7 @@ export class MembersService {
     await this.prisma.workspaceMember.delete({
       where: { workspaceId_userId: { workspaceId, userId: actor.userId } },
     });
+    this.memberChanged(actor.userId, workspaceId, actor.userId, null);
   }
 
   private async getTarget(workspaceId: string, userId: string) {

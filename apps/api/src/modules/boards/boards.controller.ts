@@ -18,6 +18,8 @@ import { BoardRoleGuard } from './guards/board-role.guard';
 import { BoardRoles } from './decorators/board-roles.decorator';
 import { CurrentBoard } from './decorators/current-board.decorator';
 import type { BoardAccess } from './board-access.service';
+import { CurrentActor } from './decorators/current-actor.decorator';
+import type { BoardEventContext } from '../../common/events/domain-events';
 import { WorkspaceRoleGuard } from '../workspaces/guards/workspace-role.guard';
 import { WorkspaceRoles } from '../workspaces/decorators/workspace-roles.decorator';
 import { CurrentMembership } from '../workspaces/decorators/current-membership.decorator';
@@ -64,21 +66,25 @@ export class BoardsController {
 
   @Patch(':id')
   @BoardRoles('OWNER', 'ADMIN')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBoardDto) {
-    return this.boards.update(id, dto);
+  update(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('id', ParseUUIDPipe) _id: string,
+    @Body() dto: UpdateBoardDto,
+  ) {
+    return this.boards.update(actor, dto);
   }
 
   @Post(':id/archive')
   @HttpCode(200)
   @BoardRoles('OWNER', 'ADMIN')
-  archive(@Param('id', ParseUUIDPipe) id: string) {
-    return this.boards.setArchived(id, true);
+  archive(@CurrentActor() actor: BoardEventContext, @Param('id', ParseUUIDPipe) _id: string) {
+    return this.boards.setArchived(actor, true);
   }
 
   @Post(':id/restore')
   @HttpCode(200)
   @BoardRoles('OWNER', 'ADMIN')
-  restore(@Param('id', ParseUUIDPipe) id: string) {
-    return this.boards.setArchived(id, false);
+  restore(@CurrentActor() actor: BoardEventContext, @Param('id', ParseUUIDPipe) _id: string) {
+    return this.boards.setArchived(actor, false);
   }
 }

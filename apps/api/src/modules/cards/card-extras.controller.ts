@@ -17,8 +17,8 @@ import { CreateLabelDto } from './dto/create-label.dto';
 import { CreateChecklistItemDto, UpdateChecklistItemDto } from './dto/checklist-item.dto';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
 import { BoardRoles } from '../boards/decorators/board-roles.decorator';
-import { CurrentBoard } from '../boards/decorators/current-board.decorator';
-import type { BoardAccess } from '../boards/board-access.service';
+import { CurrentActor } from '../boards/decorators/current-actor.decorator';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 @ApiTags('card details')
 @ApiBearerAuth()
@@ -30,41 +30,47 @@ export class CardExtrasController {
 
   @Put('assignees/:userId')
   addAssignee(
-    @CurrentBoard() access: BoardAccess,
+    @CurrentActor() actor: BoardEventContext,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
   ) {
-    return this.extras.addAssignee(access.board.id, cardId, userId);
+    return this.extras.addAssignee(actor, cardId, userId);
   }
 
   @Delete('assignees/:userId')
   removeAssignee(
+    @CurrentActor() actor: BoardEventContext,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
   ) {
-    return this.extras.removeAssignee(cardId, userId);
+    return this.extras.removeAssignee(actor, cardId, userId);
   }
 
   @Put('labels/:labelId')
   addLabel(
-    @CurrentBoard() access: BoardAccess,
+    @CurrentActor() actor: BoardEventContext,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
   ) {
-    return this.extras.addLabel(access.board.id, cardId, labelId);
+    return this.extras.addLabel(actor, cardId, labelId);
   }
 
   @Delete('labels/:labelId')
   removeLabel(
+    @CurrentActor() actor: BoardEventContext,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
   ) {
-    return this.extras.removeLabel(cardId, labelId);
+    return this.extras.removeLabel(actor, cardId, labelId);
   }
 
   @Post('checklist')
-  addItem(@Param('cardId', ParseUUIDPipe) cardId: string, @Body() dto: CreateChecklistItemDto) {
-    return this.extras.addItem(cardId, dto.text);
+  addItem(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: CreateChecklistItemDto,
+  ) {
+    return this.extras.addItem(actor, cardId, dto.text);
   }
 }
 
@@ -82,8 +88,12 @@ export class BoardLabelsController {
 
   @Post()
   @BoardRoles('OWNER', 'ADMIN')
-  create(@Param('boardId', ParseUUIDPipe) boardId: string, @Body() dto: CreateLabelDto) {
-    return this.extras.createLabel(boardId, dto);
+  create(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('boardId', ParseUUIDPipe) _boardId: string,
+    @Body() dto: CreateLabelDto,
+  ) {
+    return this.extras.createLabel(actor, dto);
   }
 }
 
@@ -97,8 +107,11 @@ export class LabelsController {
 
   @Delete()
   @HttpCode(200)
-  async remove(@Param('labelId', ParseUUIDPipe) labelId: string) {
-    await this.extras.deleteLabel(labelId);
+  async remove(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('labelId', ParseUUIDPipe) labelId: string,
+  ) {
+    await this.extras.deleteLabel(actor, labelId);
     return { message: 'Label deleted' };
   }
 }
@@ -112,14 +125,21 @@ export class ChecklistItemsController {
   constructor(private readonly extras: CardExtrasService) {}
 
   @Patch()
-  update(@Param('itemId', ParseUUIDPipe) itemId: string, @Body() dto: UpdateChecklistItemDto) {
-    return this.extras.updateItem(itemId, dto);
+  update(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @Body() dto: UpdateChecklistItemDto,
+  ) {
+    return this.extras.updateItem(actor, itemId, dto);
   }
 
   @Delete()
   @HttpCode(200)
-  async remove(@Param('itemId', ParseUUIDPipe) itemId: string) {
-    await this.extras.deleteItem(itemId);
+  async remove(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    await this.extras.deleteItem(actor, itemId);
     return { message: 'Checklist item deleted' };
   }
 }

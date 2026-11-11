@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { BoardAccess } from './board-access.service';
+import { DomainEvents } from '../../common/events/domain-events.service';
 
 const userFields = { id: true, name: true, email: true, avatarUrl: true } as const;
 
 @Injectable()
 export class BoardMembersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
 
   async list(boardId: string) {
     const members = await this.prisma.boardMember.findMany({
@@ -51,6 +55,13 @@ export class BoardMembersService {
       include: { user: { select: userFields } },
     });
 
+    this.events.emit({
+      type: 'board.member.changed',
+      boardId: access.board.id,
+      actorId,
+      data: { userId, role },
+    });
+
     return {
       userId: member.userId,
       name: member.user.name,
@@ -67,5 +78,12 @@ export class BoardMembersService {
     if (result.count === 0) {
       throw new NotFoundException('Board member not found');
     }
+    // role: null = no longer a board member (they may still see it as a workspace board).
+    this.events.emit({
+      type: 'board.member.changed',
+      boardId,
+      actorId,
+      data: { userId, role: null },
+    });
   }
 }

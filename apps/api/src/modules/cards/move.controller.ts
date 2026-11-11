@@ -5,8 +5,8 @@ import { MoveCardDto } from './dto/move-card.dto';
 import { MoveListDto } from './dto/move-list.dto';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
 import { BoardRoles } from '../boards/decorators/board-roles.decorator';
-import { CurrentBoard } from '../boards/decorators/current-board.decorator';
-import type { BoardAccess } from '../boards/board-access.service';
+import { CurrentActor } from '../boards/decorators/current-actor.decorator';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 @ApiTags('move')
 @ApiBearerAuth()
@@ -18,19 +18,19 @@ export class MoveController {
 
   @Patch('cards/:cardId/move')
   moveCard(
-    @CurrentBoard() access: BoardAccess,
+    @CurrentActor() actor: BoardEventContext,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() dto: MoveCardDto,
   ) {
-    return this.move.moveCard(access.board.id, cardId, dto);
+    return this.move.moveCard(actor, cardId, dto);
   }
 
   @Patch('lists/:listId/move')
   moveList(
-    @CurrentBoard() access: BoardAccess,
+    @CurrentActor() actor: BoardEventContext,
     @Param('listId', ParseUUIDPipe) listId: string,
     @Body() dto: MoveListDto,
   ) {
-    return this.move.moveList(access.board.id, listId, dto.index);
+    return this.move.moveList(actor, listId, dto.index);
   }
 }

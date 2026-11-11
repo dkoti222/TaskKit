@@ -82,3 +82,20 @@ Uses your effective board role.
 - Viewers are read-only on everything.
 - Only people with access to the board (and not Viewers) can be assigned to a card.
 - Archived lists and cards are hidden but can be restored.
+
+# Realtime (WebSocket) permissions
+
+Uses the same rules as reading a board over HTTP.
+
+| Action                                      | Owner | Admin | Member | Viewer | No access |
+|---------------------------------------------|:-----:|:-----:|:------:|:------:|:---------:|
+| Connect (needs a valid access token)        |  ✅   |  ✅   |   ✅   |   ✅   |    ✅     |
+| `board:join` a board and get its live events |  ✅   |  ✅   |   ✅   |   ✅   |    ❌     |
+
+- A socket without a valid access token is refused (`connect_error: unauthorized`).
+- When the access token expires, the socket gets `auth:expired` and is disconnected.
+- Joining a board you can't see answers `{ ok: false, error: "Not found" }`, like HTTP's 404.
+- Viewers get every event: realtime is read-only, it never lets anyone change anything.
+- Whenever access may have changed (board visibility, board members, workspace members, board
+  or workspace deleted), everyone in the board's room is checked again. Anyone who lost access
+  gets `board:access-removed` and stops getting events.

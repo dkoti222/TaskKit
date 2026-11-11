@@ -3,28 +3,35 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { nextPosition } from '../../common/utils/position';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { DomainEvents } from '../../common/events/domain-events.service';
+import type { BoardEventContext } from '../../common/events/domain-events';
 
 const userFields = { id: true, name: true, email: true, avatarUrl: true } as const;
 
 @Injectable()
 export class CardsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+  ) {}
 
-  async create(listId: string, userId: string, dto: CreateCardDto) {
+  async create(ctx: BoardEventContext, listId: string, dto: CreateCardDto) {
     const last = await this.prisma.card.aggregate({
       where: { listId },
       _max: { position: true },
     });
-    return this.prisma.card.create({
+    const card = await this.prisma.card.create({
       data: {
         listId,
         title: dto.title,
         description: dto.description,
         dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
         position: nextPosition(last._max.position),
-        createdById: userId,
+        createdById: ctx.actorId,
       },
     });
+    this.events.emit({ ...ctx, type: 'card.created', data: { cardId: card.id, listId } });
+    return card;
   }
 
   async getDetail(cardId: string) {
@@ -45,8 +52,8 @@ export class CardsService {
     };
   }
 
-  update(cardId: string, dto: UpdateCardDto) {
-    return this.prisma.card.update({
+  async update(ctx: BoardEventContext, cardId: string, dto: UpdateCardDto) {
+    const card = await this.prisma.card.update({
       where: { id: cardId },
       data: {
         title: dto.title,
@@ -55,12 +62,16 @@ export class CardsService {
         version: { increment: 1 },
       },
     });
+    this.events.emit({ ...ctx, type: 'card.updated', data: { cardId, version: card.version } });
+    return card;
   }
 
-  setArchived(cardId: string, archived: boolean) {
-    return this.prisma.card.update({
+  async setArchived(ctx: BoardEventContext, cardId: string, archived: boolean) {
+    const card = await this.prisma.card.update({
       where: { id: cardId },
       data: { archivedAt: archived ? new Date() : null, version: { increment: 1 } },
     });
+    this.events.emit({ ...ctx, type: 'card.archived', data: { cardId, archived } });
+    return card;
   }
 }

@@ -12,6 +12,8 @@ import { BoardsModule } from './modules/boards/boards.module';
 import { CardsModule } from './modules/cards/cards.module';
 import { EventsModule } from './common/events/events.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { CommentsModule } from './modules/comments/comments.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
   @Module({
     imports: [
@@ -27,6 +29,8 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
       BoardsModule,
       CardsModule,
       RealtimeModule,
+      CommentsModule,
+      ActivityModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

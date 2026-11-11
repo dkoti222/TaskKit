@@ -21,13 +21,15 @@ export class MoveService {
 
   async moveCard(ctx: BoardEventContext, cardId: string, dto: MoveCardDto) {
     const boardId = ctx.boardId;
+    let fromListId = '';
     const moved = await this.prisma.$transaction(async (tx) => {
       // 1. The card must exist, and the app must have its latest version
       const card = await tx.card.findUnique({
         where: { id: cardId },
-        select: { version: true, archivedAt: true },
+        select: { version: true, archivedAt: true, listId: true },
       });
       if (!card || card.archivedAt) throw new NotFoundException('Card not found');
+      fromListId = card.listId;
       if (card.version !== dto.version) throw new ConflictException(CONFLICT_MSG);
 
       // 2. The target list must be on the SAME board and not archived
@@ -82,6 +84,7 @@ export class MoveService {
       type: 'card.moved',
       data: {
         cardId,
+        fromListId,
         listId: moved.listId,
         position: moved.position,
         version: moved.version,

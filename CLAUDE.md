@@ -99,7 +99,7 @@ user's role on a board), stop and tell the owner.
 ### Board content, lists and cards (Bearer token)
 | Method & path | Body | Who |
 |---|---|---|
-| GET `/boards/:boardId/content` | — | anyone with access · lists (by position) with their cards (by position), each card with labels, assignees and `checklist: { total, done }` |
+| GET `/boards/:boardId/content` | — | anyone with access · lists (by position) with their cards (by position), each card with labels, assignees, `checklist: { total, done }` and `commentCount` |
 | POST `/boards/:boardId/lists` | `{ name }` | Owner, Admin, Member |
 | PATCH `/lists/:listId` | `{ name }` | Owner, Admin, Member |
 | archive / restore a list | see `lists.controller.ts` | Owner, Admin, Member |
@@ -119,6 +119,42 @@ user's role on a board), stop and tell the owner.
 | POST `/cards/:cardId/checklist` | `{ text }` | Owner, Admin, Member |
 | PATCH `/checklist-items/:itemId` | `{ text?, done? }` | Owner, Admin, Member |
 | DELETE `/checklist-items/:itemId` | — | Owner, Admin, Member |
+
+### Comments (Step 10)
+| Method & path | Body | Who |
+|---|---|---|
+| GET `/cards/:cardId/comments?cursor=&limit=20` | — | anyone with access · newest first, deleted ones left out |
+| POST `/cards/:cardId/comments` | `{ body }` (1–5000 chars, trimmed) | Owner, Admin, Member |
+| PATCH `/comments/:commentId` | `{ body }` | the author only (403 otherwise) · Viewers can't |
+| DELETE `/comments/:commentId` | — | the author, or a board Owner/Admin · soft delete · 404 if already deleted |
+
+`comment` = `{ id, cardId, body, createdAt, editedAt, deleted, author: { id, name, avatarUrl }, mentions: [{ id, name }] }`
+- **Mentions:** send `@[<userId>]` for someone picked from the @ list. The API also understands a
+  typed `@Full Name` (or `@FirstName` when only one person on the board has it). `mentions`
+  names everyone written as `@[<userId>]`: show those tokens as `@Name`.
+- Only people with board access count as mentioned (used for notifications in Step 11).
+
+### Activity and archived items (Step 10)
+| Method & path | Who |
+|---|---|
+| GET `/boards/:boardId/activity?kind=all\|cards\|members&cursor=&limit=20` | anyone with access · screen 20 |
+| GET `/cards/:cardId/activity?cursor=&limit=20` | anyone with access · screen 15's "Comments and activity" |
+| GET `/boards/:boardId/archived` | anyone with access · screen 18 · restore with the existing `POST /lists/:id/restore` and `POST /cards/:id/restore` |
+
+- Paginated lists return `{ items, nextCursor }`, newest first. Pass `nextCursor` as `cursor` for
+  the next page; `null` means the end. `limit` is 1–50 (default 20).
+- Activity item = `{ id, type, boardId, cardId, createdAt, actor: { id, name, avatarUrl }, data }`.
+  `type` is a domain event name (see Realtime). `data` keeps names as they were then:
+  `cardTitle`, `listName`, `fromListName`/`toListName` (moves), `fields` (card.updated),
+  `archived`, `userName`/`role` (assignees, board members), `labelName`/`labelColor`,
+  `action`/`text` (checklist), `changes` (board.updated). Any name can be `null`.
+- `comment.created` items also have `comment` (as above, its current state: edited or `deleted`).
+- Not recorded: comment edits/deletes (the comment.created item shows them) and a card moved
+  within the same list.
+- Archived = `{ lists: [{ id, name, archivedAt, cardCount, archivedBy }], cards: [{ id, title,
+  archivedAt, list: { id, name, archived }, archivedBy }] }`. `archivedBy` is
+  `{ id, name, avatarUrl }` or `null` (archived before Step 10). A card whose `list.archived` is
+  true stays hidden until its list is restored.
 
 ### Moving (drag and drop)
 | Method & path | Body | Success |
@@ -162,16 +198,17 @@ Rooms are lost when the socket reconnects: join again after every `connect`.
 | type | data |
 |---|---|
 | `card.created` | `{ cardId, listId }` |
-| `card.updated` | `{ cardId, version }` |
+| `card.updated` | `{ cardId, version, fields }` (`fields`: which of title, description, dueAt changed) |
 | `card.archived` | `{ cardId, archived }` (false = restored) |
-| `card.moved` | `{ cardId, listId, position, version }` |
+| `card.moved` | `{ cardId, fromListId, listId, position, version }` |
 | `list.created` / `list.updated` | `{ listId, name }` |
 | `list.archived` | `{ listId, archived }` |
 | `list.moved` | `{ listId, position }` |
 | `card.assignee.added` / `card.assignee.removed` | `{ cardId, userId }` |
 | `card.label.added` / `card.label.removed` | `{ cardId, labelId }` |
-| `checklist.changed` | `{ cardId, itemId }` |
-| `label.created` / `label.deleted` | `{ labelId }` |
+| `checklist.changed` | `{ cardId, itemId, action, text }` (`action`: added, checked, unchecked, renamed, deleted) |
+| `label.created` / `label.deleted` | `{ labelId, name }` |
+| `comment.created` / `comment.updated` / `comment.deleted` | `{ cardId, commentId }` |
 | `board.updated` | `{ changes }` (fields from PATCH, or `{ archived }`) |
 | `board.member.changed` | `{ userId, role }` (role `null` = removed from the board) |
 | `workspace.member.changed` | `{ userId, role }` (role `null` = left or removed). Sent to every board room of that workspace; roles may have changed |

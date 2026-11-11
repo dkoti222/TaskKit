@@ -32,6 +32,8 @@ model User {
   boardMemberships     BoardMember[]
   createdCards         Card[]              @relation("CardCreator")
   cardAssignments      CardAssignee[]
+  comments             Comment[]
+  activities           Activity[]
 
   @@map("users")
 }
@@ -160,11 +162,12 @@ model Board {
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 
-  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy User          @relation("BoardCreator", fields: [createdById], references: [id])
-  members   BoardMember[]
-  lists     List[]
-  labels    Label[]
+  workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User          @relation("BoardCreator", fields: [createdById], references: [id])
+  members    BoardMember[]
+  lists      List[]
+  labels     Label[]
+  activities Activity[]
 
   @@index([workspaceId])
   @@map("boards")
@@ -220,6 +223,8 @@ model Card {
   assignees      CardAssignee[]
   labels         CardLabel[]
   checklistItems ChecklistItem[]
+  comments       Comment[]
+  activities     Activity[]
 
   @@index([listId, position])
   @@map("cards")
@@ -273,4 +278,42 @@ model ChecklistItem {
 
   @@index([cardId, position])
   @@map("checklist_items")
+}
+
+/// A comment on a card. Deleting only sets deletedAt (soft delete), so the activity
+/// timeline can still say "comment deleted".
+model Comment {
+  id        String    @id @default(uuid())
+  cardId    String    @map("card_id")
+  authorId  String    @map("author_id")
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([cardId, createdAt])
+  @@map("comments")
+}
+
+/// One line in a board's history ("Sana moved Login bug from To do to Doing").
+/// Written by ActivityListener from domain events. `data` keeps the names as they were then.
+model Activity {
+  id        String   @id @default(uuid())
+  boardId   String   @map("board_id")
+  cardId    String?  @map("card_id")
+  actorId   String   @map("actor_id")
+  type      String
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card  Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actor User  @relation(fields: [actorId], references: [id])
+
+  @@index([boardId, createdAt])
+  @@index([cardId, createdAt])
+  @@map("activities")
 }

@@ -57,13 +57,17 @@ export class CardExtrasService {
     const label = await this.prisma.label.create({
       data: { boardId: ctx.boardId, name: dto.name, color: dto.color },
     });
-    this.events.emit({ ...ctx, type: 'label.created', data: { labelId: label.id } });
+    this.events.emit({
+      ...ctx,
+      type: 'label.created',
+      data: { labelId: label.id, name: label.name },
+    });
     return label;
   }
 
   async deleteLabel(ctx: BoardEventContext, labelId: string) {
-    await this.prisma.label.delete({ where: { id: labelId } });
-    this.events.emit({ ...ctx, type: 'label.deleted', data: { labelId } });
+    const label = await this.prisma.label.delete({ where: { id: labelId } });
+    this.events.emit({ ...ctx, type: 'label.deleted', data: { labelId, name: label.name } });
   }
 
   async addLabel(ctx: BoardEventContext, cardId: string, labelId: string) {
@@ -105,19 +109,33 @@ export class CardExtrasService {
     const item = await this.prisma.checklistItem.create({
       data: { cardId, text, position: nextPosition(last._max.position) },
     });
-    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId, itemId: item.id } });
+    this.events.emit({
+      ...ctx,
+      type: 'checklist.changed',
+      data: { cardId, itemId: item.id, action: 'added', text },
+    });
     return item;
   }
 
   async updateItem(ctx: BoardEventContext, itemId: string, dto: UpdateChecklistItemDto) {
     const item = await this.prisma.checklistItem.update({ where: { id: itemId }, data: dto });
-    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId: item.cardId, itemId } });
+    // Ticking is what people care about; a text edit is "renamed".
+    const action = dto.done === undefined ? 'renamed' : dto.done ? 'checked' : 'unchecked';
+    this.events.emit({
+      ...ctx,
+      type: 'checklist.changed',
+      data: { cardId: item.cardId, itemId, action, text: item.text },
+    });
     return item;
   }
 
   async deleteItem(ctx: BoardEventContext, itemId: string) {
     const item = await this.prisma.checklistItem.delete({ where: { id: itemId } });
-    this.events.emit({ ...ctx, type: 'checklist.changed', data: { cardId: item.cardId, itemId } });
+    this.events.emit({
+      ...ctx,
+      type: 'checklist.changed',
+      data: { cardId: item.cardId, itemId, action: 'deleted', text: item.text },
+    });
   }
 
   // ---------- Helper ----------

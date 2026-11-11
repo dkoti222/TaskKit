@@ -99,3 +99,23 @@ Uses the same rules as reading a board over HTTP.
 - Whenever access may have changed (board visibility, board members, workspace members, board
   or workspace deleted), everyone in the board's room is checked again. Anyone who lost access
   gets `board:access-removed` and stops getting events.
+
+
+# Comments and activity permissions
+
+Uses your effective board role.
+
+| Action                                         | Owner | Admin | Member | Viewer |
+|------------------------------------------------|:-----:|:-----:|:------:|:------:|
+| Read comments, card and board activity         |  ✅   |  ✅   |   ✅   |   ✅   |
+| See archived lists and cards                   |  ✅   |  ✅   |   ✅   |   ✅   |
+| Write a comment                                |  ✅   |  ✅   |   ✅   |   ❌   |
+| Edit a comment                                 | own   | own   |  own   |   ❌   |
+| Delete a comment                               |  any  |  any  |  own   |   ❌   |
+| Restore archived lists and cards               |  ✅   |  ✅   |   ✅   |   ❌   |
+
+- Only the author can edit a comment, whatever their role.
+- Deleting a comment is a soft delete: the card's activity shows "comment deleted".
+- Viewers can't edit or delete comments they wrote before they became Viewers.
+- Only people with access to the board count as @mentioned.
+- People without access to the board get 404 on all of these.

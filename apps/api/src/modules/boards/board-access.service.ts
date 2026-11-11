@@ -33,4 +33,26 @@ export class BoardAccessService {
     // Rule 4: private board, not added → no access
     return null;
   }
+
+  /**
+   * Everyone who can see the board, by the same four rules as resolve(): the workspace Owner,
+   * people added to the board, and (on WORKSPACE boards) every workspace member.
+   */
+  async peopleWithAccess(boardId: string): Promise<{ id: string; name: string }[]> {
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      select: { workspaceId: true, visibility: true, members: { select: { userId: true } } },
+    });
+    if (!board) return [];
+    const added = new Set(board.members.map((m) => m.userId));
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId: board.workspaceId, user: { deletedAt: null } },
+      select: { role: true, user: { select: { id: true, name: true } } },
+    });
+    return members
+      .filter(
+        (m) => m.role === 'OWNER' || added.has(m.user.id) || board.visibility === 'WORKSPACE',
+      )
+      .map((m) => m.user);
+  }
 }

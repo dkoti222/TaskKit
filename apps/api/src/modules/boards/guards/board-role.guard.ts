@@ -65,6 +65,14 @@ export class BoardRoleGuard implements CanActivate {
       return item?.card.list.boardId;
     }
 
+    if (params.commentId) {
+      const comment = await this.prisma.comment.findUnique({
+        where: { id: params.commentId },
+        select: { card: { select: { list: { select: { boardId: true } } } } },
+      });
+      return comment?.card.list.boardId;
+    }
+
     if (params.labelId) {
       const label = await this.prisma.label.findUnique({
         where: { id: params.labelId },

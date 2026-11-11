@@ -62,7 +62,12 @@ export class CardsService {
         version: { increment: 1 },
       },
     });
-    this.events.emit({ ...ctx, type: 'card.updated', data: { cardId, version: card.version } });
+    const fields = (['title', 'description', 'dueAt'] as const).filter((f) => dto[f] !== undefined);
+    this.events.emit({
+      ...ctx,
+      type: 'card.updated',
+      data: { cardId, version: card.version, fields },
+    });
     return card;
   }
 

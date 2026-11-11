@@ -13,11 +13,20 @@ export type BoardEventContext = { boardId: string; actorId: string };
 export type BoardEvent = BoardEventContext &
   (
     | { type: 'card.created'; data: { cardId: string; listId: string } }
-    | { type: 'card.updated'; data: { cardId: string; version: number } }
+    | {
+        type: 'card.updated';
+        data: { cardId: string; version: number; fields: ('title' | 'description' | 'dueAt')[] };
+      }
     | { type: 'card.archived'; data: { cardId: string; archived: boolean } }
     | {
         type: 'card.moved';
-        data: { cardId: string; listId: string; position: number; version: number };
+        data: {
+          cardId: string;
+          fromListId: string;
+          listId: string;
+          position: number;
+          version: number;
+        };
       }
     | { type: 'list.created'; data: { listId: string; name: string } }
     | { type: 'list.updated'; data: { listId: string; name: string } }
@@ -25,8 +34,20 @@ export type BoardEvent = BoardEventContext &
     | { type: 'list.moved'; data: { listId: string; position: number } }
     | { type: 'card.assignee.added' | 'card.assignee.removed'; data: { cardId: string; userId: string } }
     | { type: 'card.label.added' | 'card.label.removed'; data: { cardId: string; labelId: string } }
-    | { type: 'checklist.changed'; data: { cardId: string; itemId: string } }
-    | { type: 'label.created' | 'label.deleted'; data: { labelId: string } }
+    | {
+        type: 'checklist.changed';
+        data: {
+          cardId: string;
+          itemId: string;
+          action: 'added' | 'checked' | 'unchecked' | 'renamed' | 'deleted';
+          text: string;
+        };
+      }
+    | {
+        type: 'comment.created' | 'comment.updated' | 'comment.deleted';
+        data: { cardId: string; commentId: string };
+      }
+    | { type: 'label.created' | 'label.deleted'; data: { labelId: string; name: string } }
     | { type: 'board.updated'; data: { changes: Record<string, unknown> } }
     | { type: 'board.member.changed'; data: { userId: string; role: string | null } }
   );
@@ -47,7 +68,13 @@ export type WorkspaceEvent =
       data: { boardIds: string[] };
     };
 
-export type DomainEvent = BoardEvent | WorkspaceEvent;
+/** Someone was @mentioned in a comment. Not sent to the board room; Step 11 turns it into a notification. */
+export type MentionEvent = BoardEventContext & {
+  type: 'comment.mentioned';
+  data: { cardId: string; commentId: string; userIds: string[] };
+};
+
+export type DomainEvent = BoardEvent | WorkspaceEvent | MentionEvent;
 
 export type BoardEventType = BoardEvent['type'];
 
@@ -68,6 +95,9 @@ export const BOARD_EVENT_TYPES: BoardEventType[] = [
   'checklist.changed',
   'label.created',
   'label.deleted',
+  'comment.created',
+  'comment.updated',
+  'comment.deleted',
   'board.updated',
   'board.member.changed',
 ];

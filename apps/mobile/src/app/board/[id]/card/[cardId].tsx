@@ -27,11 +27,13 @@ import { DueDateField } from '@/components/due-date-field';
 import { InfoNote } from '@/components/info-note';
 import { IconButton } from '@/components/misc';
 import { MoveCardSheet } from '@/components/move-card-sheet';
+import { RealtimeBanner } from '@/components/realtime-banner';
 import { LabelPicker, PickerStatus } from '@/components/pickers';
 import { Sheet } from '@/components/sheet';
 import { MemberAvatar, RoleBadge } from '@/components/workspace-ui';
 import { useBoardContent, useLabels } from '@/hooks/use-board-content';
 import { useBoardPeople, type BoardPerson } from '@/hooks/use-board-people';
+import { useBoardRoom } from '@/hooks/use-board-room';
 import { findCachedBoard } from '@/hooks/use-boards';
 import {
   useAddChecklistItem,
@@ -57,6 +59,8 @@ export default function CardDetailScreen() {
   const board = content.data?.board;
   const workspaceId = board?.workspaceId ?? cached?.workspaceId;
   const lost = useBoardAccessLost(content.error, workspaceId);
+  // Live updates while the card is open (the Board screen underneath shares the same room).
+  useBoardRoom(lost ? undefined : boardId);
 
   const [toast, setToast] = useState<string | null>(null);
   const hideToast = useCallback(() => setToast(null), []);
@@ -83,6 +87,7 @@ export default function CardDetailScreen() {
         <View style={styles.headerCenter}>{headerCenter}</View>
         <View style={styles.headerRight}>{right}</View>
       </View>
+      <RealtimeBanner />
       {children}
       <Toast message={toast} onHide={hideToast} />
     </SafeAreaView>

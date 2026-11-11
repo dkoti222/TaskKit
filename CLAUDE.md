@@ -31,7 +31,8 @@ TaskKit/
 - **zustand** for session state (`src/store/`)
 - **expo-secure-store** for tokens — never AsyncStorage for tokens
 - Folders: `app/` screens · `src/api/` API functions · `src/components/` shared UI ·
-  `src/store/` state · `src/theme/` colors and spacing · `src/hooks/` hooks
+  `src/store/` state · `src/theme/` colors and spacing · `src/hooks/` hooks ·
+  `src/realtime/` the Socket.IO connection (live board updates; screens use `useBoardRoom(boardId)`)
 - Install Expo packages with `npx expo install <pkg>`; ask before adding any other large library.
 - Test on a real phone with Expo Go. The phone reaches the API through the Mac's LAN IP,
   set in `apps/mobile/.env` as `EXPO_PUBLIC_API_URL=http://<mac-ip>:3000/api/v1`.

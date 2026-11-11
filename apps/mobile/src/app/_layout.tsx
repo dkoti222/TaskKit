@@ -8,6 +8,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
+import { startRealtime } from '@/realtime/socket';
 import { usePendingInvite } from '@/store/pending-invite';
 import { useSession } from '@/store/session';
 import { colors, fontAssets } from '@/theme';
@@ -23,6 +24,8 @@ export default function RootLayout() {
   useEffect(() => {
     void hydrate();
     void usePendingInvite.getState().hydrate();
+    // Live board updates: connects while logged in (src/realtime/socket.ts).
+    startRealtime();
   }, [hydrate]);
 
   const ready = (fontsLoaded || !!fontError) && status !== 'loading';

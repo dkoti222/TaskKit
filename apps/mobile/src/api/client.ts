@@ -58,6 +58,17 @@ async function refreshAccessToken(): Promise<string> {
   }
 }
 
+/**
+ * Refreshes the token pair, sharing one call between everyone who asks at the same time
+ * (HTTP requests and the realtime socket). Rejects if the session is over (already logged out).
+ */
+export function refreshSession(): Promise<string> {
+  refreshInFlight ??= refreshAccessToken().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
 function bearerOf(config: InternalAxiosRequestConfig): string | undefined {
   const value = AxiosHeaders.from(config.headers).get('Authorization');
   return typeof value === 'string' ? value.replace(/^Bearer /, '') : undefined;
@@ -82,11 +93,8 @@ api.interceptors.response.use(
       // Another request already refreshed while this one was in flight.
       token = current;
     } else {
-      refreshInFlight ??= refreshAccessToken().finally(() => {
-        refreshInFlight = null;
-      });
       try {
-        token = await refreshInFlight;
+        token = await refreshSession();
       } catch (refreshError) {
         // Logged out: surface the original 401. Otherwise surface the refresh's network error.
         throw refreshError instanceof RefreshRejectedError ? error : refreshError;

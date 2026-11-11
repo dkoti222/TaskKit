@@ -23,9 +23,11 @@ import { AddListTile, COLUMN_GAP, FirstListCard, ListColumn } from '@/components
 import { Button } from '@/components/button';
 import { LabelChip, Toast } from '@/components/card-ui';
 import { ListActionsSheet } from '@/components/list-actions-sheet';
+import { RealtimeBanner } from '@/components/realtime-banner';
 import { IconButton } from '@/components/misc';
 import { Sheet } from '@/components/sheet';
 import { useBoardContent, useLabels } from '@/hooks/use-board-content';
+import { useBoardRoom } from '@/hooks/use-board-room';
 import { findCachedBoard, useBoard } from '@/hooks/use-boards';
 import { useCreateLists } from '@/hooks/use-lists';
 import { useMe } from '@/hooks/use-me';
@@ -53,6 +55,8 @@ export default function BoardScreen() {
   const workspaceId = board.data?.workspaceId ?? cached?.workspaceId ?? '';
   const workspace = useWorkspace(workspaceId);
   const lost = useBoardAccessLost(content.error ?? board.error, workspaceId);
+  // Live updates from other people while this board is open.
+  useBoardRoom(lost ? undefined : id);
 
   const moveCard = useMoveCard(id);
   const moveList = useMoveList(id);
@@ -296,6 +300,7 @@ export default function BoardScreen() {
           </ScrollView>
         ) : null}
       </SafeAreaView>
+      <RealtimeBanner />
 
       {isViewer ? (
         <View style={styles.viewerNote}>

@@ -211,6 +211,20 @@ Upload in three steps, so file bytes never go through a JSON request:
 - `STORAGE_DRIVER=local` (default): links point at the API (`/api/v1/files/<signed>`), built from
   the host the request came in on, so the phone gets a LAN-IP link. `s3`: pre-signed bucket URLs.
 
+### Search (Step 13)
+GET `/workspaces/:workspaceId/search?q=&boardId=&labelId=&assigneeId=&due=overdue|week&cursor=&limit=20`
+- Any workspace member. Only boards they can see are searched (workspace Owner: all; others:
+  WORKSPACE boards and boards they were added to). Archived boards, lists and cards are left out.
+  A `boardId` you can't see just gives no results.
+- Needs `q` or at least one filter (400 otherwise). `q` of 3+ characters: full-text over title
+  and description (English stemming, every word must match, words also match as prefixes,
+  ranked, title above description). 1–2 characters: plain "contains" (case-insensitive).
+- `assigneeId`: "My cards" (send your own id). `due=overdue`: due date passed;
+  `due=week`: due in the next 7 days.
+- → `{ items, nextCursor }`, item = `{ id, title, titleParts, snippetParts, dueAt, list: { id, name },
+  board: { id, name, color } }`. `titleParts` / `snippetParts` are `[{ text, match }]` pieces:
+  show `match: true` pieces highlighted. `snippetParts` is a bit of the description, or `null`.
+
 ### Moving (drag and drop)
 | Method & path | Body | Success |
 |---|---|---|

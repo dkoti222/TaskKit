@@ -1,0 +1,550 @@
+{
+  "info": {
+    "name": "TaskKit · Step 13 search",
+    "description": "Search in the \"Task kit Studio One\" workspace. App v2 is private (only Ravi, the Owner, sees its cards).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "workspaceId",
+      "value": "64769558-eedb-4ed5-af77-68045759bb75"
+    },
+    {
+      "key": "otherWorkspaceId",
+      "value": "6295e279-1699-43f9-b6fa-7f168e715757"
+    },
+    {
+      "key": "privateBoardId",
+      "value": "06509663-757b-43b0-bfbc-667a4b494050"
+    },
+    {
+      "key": "raviId",
+      "value": ""
+    },
+    {
+      "key": "ravi_token",
+      "value": ""
+    },
+    {
+      "key": "sana_token",
+      "value": ""
+    },
+    {
+      "key": "john_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · Log in",
+      "item": [
+        {
+          "name": "Ravi (Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ravi_token', pm.response.json().accessToken);",
+                  "pm.collectionVariables.set('raviId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ravi@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sana (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sana_token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sana@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "John (Viewer, not in Mobile team)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('john_token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 · Search",
+      "item": [
+        {
+          "name": "Full text: login",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "login"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Prefix: logi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=logi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "logi"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stemming: logins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=logins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "logins"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Short query (contains): ap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=ap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "ap"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "My cards (Ravi's)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?assigneeId={{raviId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "assigneeId",
+                  "value": "{{raviId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overdue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?due=overdue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "due",
+                  "value": "overdue"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Due this week",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?due=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "due",
+                  "value": "week"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Two per page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=a&limit=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "a"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 · Errors and permissions",
+      "item": [
+        {
+          "name": "Nothing to search → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "Bad due → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?due=tomorrow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "due",
+                  "value": "tomorrow"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Injection attempt is just text → 200, no results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=login'; DROP TABLE cards; --",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "login'; DROP TABLE cards; --"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Private board by id, not a member → 200, empty",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/search?q=a&boardId={{privateBoardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{workspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "a"
+                },
+                {
+                  "key": "boardId",
+                  "value": "{{privateBoardId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Outsider (John, other workspace) → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{john_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{otherWorkspaceId}}/search?q=login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "workspaces",
+                "{{otherWorkspaceId}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "login"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -227,16 +227,20 @@ model Card {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  list           List            @relation(fields: [listId], references: [id], onDelete: Cascade)
-  createdBy      User            @relation("CardCreator", fields: [createdById], references: [id])
+  list           List                     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdBy      User                     @relation("CardCreator", fields: [createdById], references: [id])
   assignees      CardAssignee[]
   labels         CardLabel[]
   checklistItems ChecklistItem[]
   comments       Comment[]
   activities     Activity[]
   attachments    Attachment[]
+  /// Full-text search (Step 13): title (weight A) + description (weight B), kept up to date by
+  /// Postgres itself (a GENERATED column, see the cards_search migration). Never written by us.
+  search         Unsupported("tsvector")? @default(dbgenerated("(setweight(to_tsvector('english'::regconfig, COALESCE(title, ''::text)), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\"))"))
 
   @@index([listId, position])
+  @@index([search], type: Gin)
   @@map("cards")
 }
 

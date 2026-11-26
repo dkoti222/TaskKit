@@ -151,3 +151,16 @@ Uses your effective board role.
 - Upload and download links are signed and expire after 10 minutes. Anyone holding a fresh
   link can use it, so the API only hands them out after the role checks above.
 - People without access to the board get 404.
+
+
+# Search permissions
+
+| Action                                   | Owner | Admin | Member | Viewer | Not in workspace |
+|------------------------------------------|:-----:|:-----:|:------:|:------:|:----------------:|
+| Search a workspace's cards               |  ✅   |  ✅   |   ✅   |   ✅   |       404        |
+
+- Results only come from boards you can see, by the same rules as opening a board: the workspace
+  Owner sees every board; everyone else sees WORKSPACE boards and PRIVATE boards they were added
+  to. Archived boards, lists and cards are never returned.
+- Filtering by a board you can't see returns no results (not an error), so search can't be used
+  to find out whether a private board exists.

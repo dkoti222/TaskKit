@@ -16,6 +16,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { SearchModule } from './modules/search/search.module';
 
   @Module({
     imports: [
@@ -35,6 +36,7 @@ import { AttachmentsModule } from './modules/attachments/attachments.module';
       ActivityModule,
       NotificationsModule,
       AttachmentsModule,
+      SearchModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

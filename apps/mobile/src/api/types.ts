@@ -247,3 +247,33 @@ export type ArchivedItems = {
     archivedBy: CardPerson | null;
   }[];
 };
+
+// ---------- Step 11: notifications ----------
+
+export type NotificationType =
+  'card.assigned' | 'comment.mentioned' | 'comment.created' | 'workspace.invited' | 'card.due';
+
+export type AppNotification = {
+  id: string;
+  type: NotificationType;
+  readAt: string | null;
+  createdAt: string;
+  /** Names as they were then, plus the ids needed to open the card or invitation. */
+  data: {
+    actorId?: string | null;
+    actorName?: string | null;
+    workspaceId?: string;
+    workspaceName?: string;
+    boardId?: string;
+    boardName?: string;
+    cardId?: string;
+    cardTitle?: string;
+    commentId?: string;
+    preview?: string;
+    invitationToken?: string;
+    role?: AssignableRole;
+    dueAt?: string;
+  };
+};
+
+export type NotificationSettings = { push: boolean; mentionEmail: boolean; dueReminders: boolean };

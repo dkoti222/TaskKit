@@ -19,14 +19,19 @@ import { getErrorMessage } from '@/api/errors';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { useMe } from '@/hooks/use-me';
+import { useNotificationSettings, useUpdateNotificationSettings } from '@/hooks/use-notifications';
+import { pushUnavailableReason } from '@/notifications/push';
 import { initials } from '@/lib/format';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 // 22 · Profile and settings
-// Not built yet (no API): notification preferences, active devices, log out of other devices.
+// Not built yet (no API): active devices, log out of other devices.
 export default function ProfileScreen() {
   const me = useMe();
   const [loggingOut, setLoggingOut] = useState(false);
+  const settings = useNotificationSettings();
+  const updateSettings = useUpdateNotificationSettings();
+  const pushNote = pushUnavailableReason();
 
   // "Change password" uses the existing reset flow: we email a link that opens Set new password.
   const changePassword = useMutation({ mutationFn: forgotPassword });
@@ -86,6 +91,55 @@ export default function ProfileScreen() {
               </Pressable>
             </>
           )}
+        </View>
+
+        {/* Notifications (Step 11) */}
+        <AppText style={styles.sectionLabel}>Notifications</AppText>
+        <View style={styles.card}>
+          {settings.isPending ? (
+            <ActivityIndicator color={colors.primary} style={styles.settingsLoading} />
+          ) : settings.isError ? (
+            <Pressable onPress={() => settings.refetch()} style={styles.row}>
+              <AppText variant="secondary">{getErrorMessage(settings.error)} Tap to retry.</AppText>
+            </Pressable>
+          ) : (
+            (
+              [
+                ['push', 'Push notifications'],
+                ['mentionEmail', 'Email me when mentioned'],
+                ['dueReminders', 'Due date reminders'],
+              ] as const
+            ).map(([key, label], index) => {
+              const on = settings.data[key];
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  onPress={() => updateSettings.mutate({ [key]: !on })}
+                  style={({ pressed }) => [
+                    styles.row,
+                    index > 0 && styles.rowDivider,
+                    pressed && styles.pressed,
+                  ]}>
+                  <AppText style={styles.rowText}>{label}</AppText>
+                  <View style={[styles.box, on && styles.boxOn]}>
+                    {on ? <Feather name="check" size={14} color={colors.surface} /> : null}
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
+          {settings.data?.push && pushNote ? (
+            <AppText variant="small" style={styles.rowNote}>
+              {pushNote} You’ll still see everything in Alerts.
+            </AppText>
+          ) : null}
+          {updateSettings.isError ? (
+            <AppText variant="small" style={[styles.rowNote, { color: colors.danger }]}>
+              {getErrorMessage(updateSettings.error)}
+            </AppText>
+          ) : null}
         </View>
 
         {/* Account */}
@@ -186,10 +240,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   rowText: { fontSize: 16 },
+  rowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  settingsLoading: { marginVertical: spacing.lg },
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   rowNote: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, marginTop: -4 },
   pressed: { backgroundColor: colors.background },
   logout: { marginTop: spacing.sm },
-  deleteLink: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  deleteLink: {
+    alignSelf: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
   deleteText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.danger },
   version: { textAlign: 'center', marginTop: -spacing.sm },
 });

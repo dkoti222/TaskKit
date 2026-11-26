@@ -11,6 +11,7 @@ import { activityKeys } from '@/hooks/use-activity';
 import { boardKeys } from '@/hooks/use-boards';
 import { cardKeys } from '@/hooks/use-cards';
 import { meQueryKey } from '@/hooks/use-me';
+import { notificationKeys } from '@/hooks/use-notifications';
 import { useSession } from '@/store/session';
 
 /**
@@ -120,6 +121,10 @@ function getSocket(): Socket {
     void queryClient.invalidateQueries({ queryKey: boardKeys.detail(boardId) });
   });
   socket.on('auth:expired', () => setStatus('reconnecting'));
+  // Step 11: a new notification for us → refresh the list and the Alerts badge.
+  socket.on('notification:new', () => {
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+  });
 
   return socket;
 }

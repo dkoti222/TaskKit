@@ -8,6 +8,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
+import { startPush } from '@/notifications/push';
 import { startRealtime } from '@/realtime/socket';
 import { usePendingInvite } from '@/store/pending-invite';
 import { useSession } from '@/store/session';
@@ -26,6 +27,8 @@ export default function RootLayout() {
     void usePendingInvite.getState().hydrate();
     // Live board updates: connects while logged in (src/realtime/socket.ts).
     startRealtime();
+    // Push notifications: registers after login, opens the card when one is tapped.
+    startPush();
   }, [hydrate]);
 
   const ready = (fontsLoaded || !!fontError) && status !== 'loading';

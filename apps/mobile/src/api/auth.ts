@@ -1,3 +1,4 @@
+import { unregisterPush } from '@/notifications/push';
 import { useSession } from '@/store/session';
 import { api } from './client';
 import type { AuthResponse, MessageResponse } from './types';
@@ -37,6 +38,8 @@ export async function resetPassword(body: { token: string; password: string }) {
 /** Revokes the refresh token on the server (best effort), then clears the local session. */
 export async function logOut() {
   const { refreshToken, signOut } = useSession.getState();
+  // Stop push notifications to this phone first, while we still have a valid session.
+  await unregisterPush();
   if (refreshToken) {
     try {
       await api.post<MessageResponse>('/auth/logout', { refreshToken }, { timeout: 5_000 });

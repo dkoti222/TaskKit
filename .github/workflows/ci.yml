@@ -1,0 +1,73 @@
+# Runs on every push and on pull requests to dev and main.
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  api:
+    name: API (lint, build, unit + e2e tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskkit
+          POSTGRES_PASSWORD: taskkit
+          POSTGRES_DB: taskkit_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U taskkit"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://taskkit:taskkit@localhost:5432/taskkit_test
+      JWT_ACCESS_SECRET: ci-access-secret
+      JWT_ACCESS_TTL_SECONDS: '900'
+      REFRESH_TTL_DAYS: '7'
+      RESET_PASSWORD_URL: taskkit://reset-password
+      REDIS_URL: redis://localhost:6379
+      NOTIFICATIONS_ENABLED: 'false'
+      STORAGE_DRIVER: local
+      UPLOADS_DIR: ./uploads-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci # also runs `prisma generate` (postinstall)
+      - run: npx prisma migrate deploy
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:e2e
+
+  mobile:
+    name: Mobile (type check, lint, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test -- --ci

@@ -1,0 +1,533 @@
+{
+  "info": {
+    "name": "TaskKit · Step 12 attachments",
+    "description": "Uploads a tiny text file (19 bytes) through the three steps. The PUT has no Authorization header: the signed link is the permission.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "boardId",
+      "value": "e9cd73a3-7e3e-4388-94e0-21a2356f4ffe"
+    },
+    {
+      "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "attachmentId",
+      "value": ""
+    },
+    {
+      "key": "uploadUrl",
+      "value": ""
+    },
+    {
+      "key": "downloadUrl",
+      "value": ""
+    },
+    {
+      "key": "ravi_token",
+      "value": ""
+    },
+    {
+      "key": "john_token",
+      "value": ""
+    },
+    {
+      "key": "priya_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · Log in",
+      "item": [
+        {
+          "name": "Ravi (Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ravi_token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ravi@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "John (Viewer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('john_token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Priya (Member)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('priya_token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"priya@taskkit.test\",\n  \"password\": \"Test1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pick a card (see attachmentCount)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('cardId', pm.response.json().lists[0].cards[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/content",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}",
+                "content"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 · Upload",
+      "item": [
+        {
+          "name": "Not allowed type → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/attachments/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "attachments",
+                "upload-url"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"app.exe\",\n  \"mimeType\": \"application/x-msdownload\",\n  \"size\": 100\n}"
+            }
+          }
+        },
+        {
+          "name": "Too big → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/attachments/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "attachments",
+                "upload-url"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"big.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"size\": 10485761\n}"
+            }
+          }
+        },
+        {
+          "name": "Viewer → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{john_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/attachments/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "attachments",
+                "upload-url"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"notes.txt\",\n  \"mimeType\": \"text/plain\",\n  \"size\": 19\n}"
+            }
+          }
+        },
+        {
+          "name": "Step 1: upload link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('attachmentId', pm.response.json().attachmentId);",
+                  "pm.collectionVariables.set('uploadUrl', pm.response.json().upload.url);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/attachments/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "attachments",
+                "upload-url"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"notes.txt\",\n  \"mimeType\": \"text/plain\",\n  \"size\": 19\n}"
+            }
+          }
+        },
+        {
+          "name": "Complete too early → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attachments/{{attachmentId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attachments",
+                "{{attachmentId}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 2: PUT the bytes (no login header)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "url": {
+              "raw": "{{uploadUrl}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "hello from postman\n"
+            }
+          }
+        },
+        {
+          "name": "Step 3: complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attachments/{{attachmentId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attachments",
+                "{{attachmentId}}",
+                "complete"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 · Read and delete",
+      "item": [
+        {
+          "name": "List (John can read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{john_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/{{cardId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}",
+                "attachments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('downloadUrl', pm.response.json().url);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{john_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attachments/{{attachmentId}}/download",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attachments",
+                "{{attachmentId}}",
+                "download"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open the link (no login header)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{downloadUrl}}"
+            }
+          }
+        },
+        {
+          "name": "Priya (Member) deletes Ravi's file → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{priya_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ravi deletes it",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ravi_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Old download link → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{downloadUrl}}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,12 @@ export class ListsService {
             assignees: { include: { user: { select: userFields } } },
             labels: { include: { label: true } },
             checklistItems: { select: { done: true } },
-            _count: { select: { comments: { where: { deletedAt: null } } } },
+            _count: {
+              select: {
+                comments: { where: { deletedAt: null } },
+                attachments: { where: { deletedAt: null, completedAt: { not: null } } },
+              },
+            },
           },
         },
       },
@@ -51,6 +56,7 @@ export class ListsService {
             done: card.checklistItems.filter((i) => i.done).length,
           },
           commentCount: card._count.comments,
+          attachmentCount: card._count.attachments,
         })),
       })),
     };

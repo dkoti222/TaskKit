@@ -40,6 +40,7 @@ model User {
   activities           Activity[]
   notifications        Notification[]
   pushTokens           PushToken[]
+  attachments          Attachment[]
 
   @@map("users")
 }
@@ -233,6 +234,7 @@ model Card {
   checklistItems ChecklistItem[]
   comments       Comment[]
   activities     Activity[]
+  attachments    Attachment[]
 
   @@index([listId, position])
   @@map("cards")
@@ -354,4 +356,25 @@ model PushToken {
 
   @@index([userId])
   @@map("push_tokens")
+}
+
+/// A file on a card (Step 12). `completedAt` is null while the upload is still pending:
+/// pending rows are hidden everywhere. Deleting sets `deletedAt` and removes the stored file.
+model Attachment {
+  id          String    @id @default(uuid())
+  cardId      String    @map("card_id")
+  uploaderId  String    @map("uploader_id")
+  fileName    String    @map("file_name")
+  mimeType    String    @map("mime_type")
+  size        Int
+  storageKey  String    @unique @map("storage_key")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  card     Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploader User @relation(fields: [uploaderId], references: [id])
+
+  @@index([cardId, createdAt])
+  @@map("attachments")
 }

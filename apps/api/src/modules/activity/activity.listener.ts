@@ -122,6 +122,12 @@ export class ActivityListener implements OnModuleInit {
       case 'comment.updated':
       case 'comment.deleted':
         return null;
+      case 'card.attachment.added':
+      case 'card.attachment.removed':
+        return {
+          cardId: event.data.cardId,
+          data: { ...(await this.card(event.data.cardId)), fileName: event.data.fileName },
+        };
       case 'list.created':
       case 'list.updated':
         return { data: { listId: event.data.listId, listName: event.data.name } };

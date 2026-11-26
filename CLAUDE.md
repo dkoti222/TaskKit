@@ -99,7 +99,7 @@ user's role on a board), stop and tell the owner.
 ### Board content, lists and cards (Bearer token)
 | Method & path | Body | Who |
 |---|---|---|
-| GET `/boards/:boardId/content` | — | anyone with access · lists (by position) with their cards (by position), each card with labels, assignees, `checklist: { total, done }` and `commentCount` |
+| GET `/boards/:boardId/content` | — | anyone with access · lists (by position) with their cards (by position), each card with labels, assignees, `checklist: { total, done }`, `commentCount` and `attachmentCount` |
 | POST `/boards/:boardId/lists` | `{ name }` | Owner, Admin, Member |
 | PATCH `/lists/:listId` | `{ name }` | Owner, Admin, Member |
 | archive / restore a list | see `lists.controller.ts` | Owner, Admin, Member |
@@ -189,6 +189,28 @@ so they appear a moment after the change.
 - Push messages carry `data: { type, boardId, cardId, token }` so a tap can open the card or invite.
 - Socket: every socket joins `user:<id>` on connect and gets `notification:new` (the notification).
 
+### Attachments (Step 12)
+Upload in three steps, so file bytes never go through a JSON request:
+1. POST `/cards/:cardId/attachments/upload-url` `{ fileName, mimeType, size }` (Owner, Admin, Member)
+   → 201 `{ attachmentId, upload: { url, method: "PUT", headers } }`. 400 if `mimeType` isn't
+   allowed (images: jpeg, png, gif, webp, heic/heif · pdf · Word, Excel, PowerPoint (old and new) ·
+   text/plain, csv, markdown) or `size` is over 10 MB (10485760 bytes).
+2. `PUT` the raw bytes to `upload.url` with `upload.headers`, no Authorization header (the link is
+   signed and lasts 10 minutes). 413 if more bytes than `size` arrive.
+3. POST `/attachments/:id/complete` (the uploader) → 200 `attachment`. 400 if the file hasn't
+   arrived or its size differs. Bumps the card's `version`.
+
+| Method & path | Who |
+|---|---|
+| GET `/cards/:cardId/attachments` | anyone with access · ready files, newest first |
+| GET `/attachments/:id/download` | anyone with access · `{ url, expiresAt }`, valid 10 minutes, no login needed for the url |
+| DELETE `/attachments/:id` | the uploader, or a board Owner/Admin · Viewers never · bumps the card's `version` |
+
+`attachment` = `{ id, cardId, fileName, mimeType, size, createdAt, uploader: { id, name, avatarUrl }, previewUrl }`
+(`previewUrl`: images only, a 10-minute link for the thumbnail).
+- `STORAGE_DRIVER=local` (default): links point at the API (`/api/v1/files/<signed>`), built from
+  the host the request came in on, so the phone gets a LAN-IP link. `s3`: pre-signed bucket URLs.
+
 ### Moving (drag and drop)
 | Method & path | Body | Success |
 |---|---|---|
@@ -243,6 +265,7 @@ Rooms are lost when the socket reconnects: join again after every `connect`.
 | `checklist.changed` | `{ cardId, itemId, action, text }` (`action`: added, checked, unchecked, renamed, deleted) |
 | `label.created` / `label.deleted` | `{ labelId, name }` |
 | `comment.created` / `comment.updated` / `comment.deleted` | `{ cardId, commentId }` |
+| `card.attachment.added` / `card.attachment.removed` | `{ cardId, attachmentId, fileName }` |
 | `board.updated` | `{ changes }` (fields from PATCH, or `{ archived }`) |
 | `board.member.changed` | `{ userId, role }` (role `null` = removed from the board) |
 | `workspace.member.changed` | `{ userId, role }` (role `null` = left or removed). Sent to every board room of that workspace; roles may have changed |

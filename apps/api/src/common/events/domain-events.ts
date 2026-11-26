@@ -48,6 +48,10 @@ export type BoardEvent = BoardEventContext &
         data: { cardId: string; commentId: string };
       }
     | { type: 'label.created' | 'label.deleted'; data: { labelId: string; name: string } }
+    | {
+        type: 'card.attachment.added' | 'card.attachment.removed';
+        data: { cardId: string; attachmentId: string; fileName: string };
+      }
     | { type: 'board.updated'; data: { changes: Record<string, unknown> } }
     | { type: 'board.member.changed'; data: { userId: string; role: string | null } }
   );
@@ -115,6 +119,8 @@ export const BOARD_EVENT_TYPES: BoardEventType[] = [
   'checklist.changed',
   'label.created',
   'label.deleted',
+  'card.attachment.added',
+  'card.attachment.removed',
   'comment.created',
   'comment.updated',
   'comment.deleted',

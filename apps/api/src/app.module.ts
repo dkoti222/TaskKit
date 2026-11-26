@@ -15,6 +15,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
 
   @Module({
     imports: [
@@ -33,6 +34,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       CommentsModule,
       ActivityModule,
       NotificationsModule,
+      AttachmentsModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

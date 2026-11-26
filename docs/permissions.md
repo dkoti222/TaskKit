@@ -134,3 +134,20 @@ board):
 - **Invited to a workspace**: the invited email, if it already has a TaskKit account.
 - **Card due within 24 hours**: its assignees, once per due date, unless they turned due
   reminders off.
+
+
+# Attachments permissions
+
+Uses your effective board role.
+
+| Action                                   | Owner | Admin | Member | Viewer |
+|------------------------------------------|:-----:|:-----:|:------:|:------:|
+| See and download a card's files          |  ✅   |  ✅   |   ✅   |   ✅   |
+| Upload a file                            |  ✅   |  ✅   |   ✅   |   ❌   |
+| Finish an upload (`complete`)            | own   | own   |  own   |   ❌   |
+| Delete a file                            |  any  |  any  |  own   |   ❌   |
+
+- Allowed types: images, PDF, Office documents, plain text/CSV/Markdown. Up to 10 MB.
+- Upload and download links are signed and expire after 10 minutes. Anyone holding a fresh
+  link can use it, so the API only hands them out after the role checks above.
+- People without access to the board get 404.

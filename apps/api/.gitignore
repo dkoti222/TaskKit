@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# Attachments stored by the local storage driver (Step 12)
+uploads/

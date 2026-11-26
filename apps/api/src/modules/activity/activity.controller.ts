@@ -3,6 +3,9 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ActivityQueryDto, ActivityService } from './activity.service';
 import { PageQueryDto } from '../../common/utils/pagination';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
+import { WorkspaceRoleGuard } from '../workspaces/guards/workspace-role.guard';
+import { CurrentMembership } from '../workspaces/decorators/current-membership.decorator';
+import type { WorkspaceMember } from '../../generated/prisma/client';
 
 // All read-only: anyone who can see the board.
 
@@ -37,5 +40,23 @@ export class CardActivityController {
   @Get('activity')
   list(@Param('cardId', ParseUUIDPipe) cardId: string, @Query() query: PageQueryDto) {
     return this.activity.listForCard(cardId, query);
+  }
+}
+
+@ApiTags('activity')
+@ApiBearerAuth()
+@UseGuards(WorkspaceRoleGuard)
+@Controller('workspaces/:workspaceId/activity')
+export class WorkspaceActivityController {
+  constructor(private readonly activity: ActivityService) {}
+
+  /** Screen 08 "Recent activity": any workspace member, only boards they can see. */
+  @Get()
+  list(
+    @CurrentMembership() member: WorkspaceMember,
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Query() query: PageQueryDto,
+  ) {
+    return this.activity.listForWorkspace(workspaceId, member, query);
   }
 }

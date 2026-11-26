@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -17,7 +16,7 @@ type Row = {
 /** An in-memory stand-in for the refresh_tokens table, enough for TokenService. */
 function fakePrisma(user = { id: 'u1', email: 'ravi@taskkit.test', deletedAt: null as Date | null }) {
   const rows: Row[] = [];
-  const matches = (row: Row, where: Partial<Row> & { revokedAt?: null }) =>
+  const matches = (row: Row, where: Partial<Row>) =>
     Object.entries(where).every(([k, v]) => row[k as keyof Row] === v);
   const prisma = {
     rows,

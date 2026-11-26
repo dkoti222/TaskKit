@@ -164,3 +164,6 @@ Uses your effective board role.
   to. Archived boards, lists and cards are never returned.
 - Filtering by a board you can't see returns no results (not an error), so search can't be used
   to find out whether a private board exists.
+
+- Workspace activity (`GET /workspaces/:id/activity`): any workspace member, and only entries
+  from boards they can see (same rules as search). Outsiders get 404.

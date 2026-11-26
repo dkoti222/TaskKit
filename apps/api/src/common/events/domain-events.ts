@@ -52,6 +52,7 @@ export type BoardEvent = BoardEventContext &
         type: 'card.attachment.added' | 'card.attachment.removed';
         data: { cardId: string; attachmentId: string; fileName: string };
       }
+    | { type: 'board.created'; data: { name: string } }
     | { type: 'board.updated'; data: { changes: Record<string, unknown> } }
     | { type: 'board.member.changed'; data: { userId: string; role: string | null } }
   );
@@ -124,6 +125,7 @@ export const BOARD_EVENT_TYPES: BoardEventType[] = [
   'comment.created',
   'comment.updated',
   'comment.deleted',
+  'board.created',
   'board.updated',
   'board.member.changed',
 ];

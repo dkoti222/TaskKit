@@ -55,4 +55,22 @@ export class BoardAccessService {
       )
       .map((m) => m.user);
   }
+
+  /**
+   * Ids of the (not archived) boards a workspace member can see: the workspace Owner sees all;
+   * others see WORKSPACE boards and boards they were added to. Same rules as resolve().
+   */
+  async visibleBoardIds(workspaceId: string, member: { userId: string; role: string }) {
+    const boards = await this.prisma.board.findMany({
+      where: {
+        workspaceId,
+        archivedAt: null,
+        ...(member.role === 'OWNER'
+          ? {}
+          : { OR: [{ visibility: 'WORKSPACE' }, { members: { some: { userId: member.userId } } }] }),
+      },
+      select: { id: true },
+    });
+    return boards.map((b) => b.id);
+  }
 }

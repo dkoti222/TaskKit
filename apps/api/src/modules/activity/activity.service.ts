@@ -4,6 +4,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PageQueryDto, pageArgs, toPage } from '../../common/utils/pagination';
 import { CommentsService } from '../comments/comments.service';
+import { BoardAccessService } from '../boards/board-access.service';
 
 export class ActivityQueryDto extends PageQueryDto {
   /** Board activity filter chips (screen 20): everything, card changes, or member changes. */
@@ -30,11 +31,22 @@ export class ActivityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly comments: CommentsService,
+    private readonly access: BoardAccessService,
   ) {}
 
   async listForBoard(boardId: string, query: ActivityQueryDto) {
     const filter = query.kind ? KIND_FILTERS[query.kind] : undefined;
     return this.page({ boardId, ...filter }, query);
+  }
+
+  /** Screen 08's "Recent activity": every board in the workspace this member can see. */
+  async listForWorkspace(
+    workspaceId: string,
+    member: { userId: string; role: string },
+    query: PageQueryDto,
+  ) {
+    const boardIds = await this.access.visibleBoardIds(workspaceId, member);
+    return this.page({ boardId: { in: boardIds } }, query);
   }
 
   /** A card's timeline: its changes and its comments (comment.created rows), newest first. */
@@ -108,7 +120,10 @@ export class ActivityService {
   private async page(where: Prisma.ActivityWhereInput, query: PageQueryDto) {
     const rows = await this.prisma.activity.findMany({
       where,
-      include: { actor: { select: actorFields } },
+      include: {
+        actor: { select: actorFields },
+        board: { select: { id: true, name: true, color: true } },
+      },
       ...pageArgs(query),
     });
     const page = toPage(rows, query);
@@ -133,6 +148,7 @@ export class ActivityService {
         id: r.id,
         type: r.type,
         boardId: r.boardId,
+        board: r.board,
         cardId: r.cardId,
         createdAt: r.createdAt,
         actor: r.actor,

@@ -146,6 +146,8 @@ export class ActivityListener implements OnModuleInit {
       case 'label.created':
       case 'label.deleted':
         return { data: { labelId: event.data.labelId, labelName: event.data.name } };
+      case 'board.created':
+        return { data: { boardName: event.data.name } };
       case 'board.updated':
         return { data: { changes: event.data.changes } };
       case 'board.member.changed':

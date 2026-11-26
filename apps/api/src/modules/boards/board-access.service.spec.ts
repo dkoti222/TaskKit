@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { BoardAccessService } from './board-access.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 

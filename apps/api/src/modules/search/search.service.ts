@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import type { WorkspaceMember } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BoardAccessService } from '../boards/board-access.service';
 import type { SearchQueryDto } from './dto/search-query.dto';
 
 /** Marks around matches inside ts_headline output. Control characters can't appear in cards. */
@@ -27,14 +28,17 @@ export type Highlighted = { text: string; match: boolean }[];
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: BoardAccessService,
+  ) {}
 
   async search(member: WorkspaceMember, workspaceId: string, query: SearchQueryDto) {
     const q = query.q ?? '';
     const hasFilter = !!(query.boardId || query.labelId || query.assigneeId || query.due);
     if (!q && !hasFilter) throw new BadRequestException('Type something to search, or pick a filter');
 
-    const boardIds = await this.visibleBoardIds(member, workspaceId);
+    const boardIds = await this.access.visibleBoardIds(workspaceId, member);
     // Asking for a board you can't see gives the same empty answer as a board with no matches.
     const boards = query.boardId ? boardIds.filter((id) => id === query.boardId) : boardIds;
     if (boards.length === 0) return { items: [], nextCursor: null };
@@ -117,25 +121,6 @@ export class SearchService {
       })),
       nextCursor: rows.length > take ? encodeCursor(offset + take) : null,
     };
-  }
-
-  /**
-   * The boards this member can see, by the same rules as BoardAccessService.resolve:
-   * the workspace Owner sees all; others see WORKSPACE boards and boards they were added to.
-   * Archived boards aren't searched.
-   */
-  async visibleBoardIds(member: WorkspaceMember, workspaceId: string) {
-    const boards = await this.prisma.board.findMany({
-      where: {
-        workspaceId,
-        archivedAt: null,
-        ...(member.role === 'OWNER'
-          ? {}
-          : { OR: [{ visibility: 'WORKSPACE' }, { members: { some: { userId: member.userId } } }] }),
-      },
-      select: { id: true },
-    });
-    return boards.map((b) => b.id);
   }
 }
 

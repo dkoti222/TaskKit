@@ -100,6 +100,9 @@ user's role on a board), stop and tell the owner.
 `/workspaces`, `/workspaces/:id`, `/workspaces/:id/members`, `/workspaces/:id/invitations`,
 `/invitations/:token`, `/workspaces/:workspaceId/boards`, `/boards/:boardId`,
 `/boards/:boardId/members/:userId` — see `modules/workspaces` and `modules/boards`.
+- GET `/workspaces/:workspaceId/boards` also returns `listCount`, `cardCount` (not archived) and
+  `memberCount` (people added to the board) per board, for the tiles on screen 08.
+- DELETE `/workspaces/:id` (Owner only) deletes the workspace and everything in it.
 
 ### Board content, lists and cards (Bearer token)
 | Method & path | Body | Who |
@@ -144,6 +147,7 @@ user's role on a board), stop and tell the owner.
 |---|---|
 | GET `/boards/:boardId/activity?kind=all\|cards\|members&cursor=&limit=20` | anyone with access · screen 20 |
 | GET `/cards/:cardId/activity?cursor=&limit=20` | anyone with access · screen 15's "Comments and activity" |
+| GET `/workspaces/:workspaceId/activity?cursor=&limit=20` | any workspace member · screen 08 "Recent activity" · only boards you can see; items also have `board: { id, name, color }` |
 | GET `/boards/:boardId/archived` | anyone with access · screen 18 · restore with the existing `POST /lists/:id/restore` and `POST /cards/:id/restore` |
 
 - Paginated lists return `{ items, nextCursor }`, newest first. Pass `nextCursor` as `cursor` for
@@ -285,6 +289,7 @@ Rooms are lost when the socket reconnects: join again after every `connect`.
 | `label.created` / `label.deleted` | `{ labelId, name }` |
 | `comment.created` / `comment.updated` / `comment.deleted` | `{ cardId, commentId }` |
 | `card.attachment.added` / `card.attachment.removed` | `{ cardId, attachmentId, fileName }` |
+| `board.created` | `{ name }` |
 | `board.updated` | `{ changes }` (fields from PATCH, or `{ archived }`) |
 | `board.member.changed` | `{ userId, role }` (role `null` = removed from the board) |
 | `workspace.member.changed` | `{ userId, role }` (role `null` = left or removed). Sent to every board room of that workspace; roles may have changed |

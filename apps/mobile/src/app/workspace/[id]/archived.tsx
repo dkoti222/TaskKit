@@ -23,14 +23,17 @@ import { shortDate } from '@/lib/format';
 import { canManageBoard } from '@/lib/roles';
 import { colors, fonts, radius, spacing } from '@/theme';
 
-// 18 · Archived items — archived boards for now. The design's Cards / Lists tabs come with those APIs.
+// Archived boards of a workspace (from Workspace settings). A board's archived cards and lists
+// are on 18 · Archived items (board/[id]/archived), opened from Board settings.
 export default function ArchivedItemsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const archived = useBoards(id, true);
   const restore = useRestoreBoard(id);
 
   const goBack = () =>
-    router.canGoBack() ? router.back() : router.replace({ pathname: '/workspace/[id]', params: { id } });
+    router.canGoBack()
+      ? router.back()
+      : router.replace({ pathname: '/workspace/[id]', params: { id } });
 
   if (getErrorStatus(archived.error) === 404) {
     return (
@@ -46,7 +49,7 @@ export default function ArchivedItemsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <NavHeader title="Archived items" onBack={goBack} />
+      <NavHeader title="Archived boards" onBack={goBack} />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -131,7 +134,12 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.md },
   loading: { marginTop: spacing.xxl },
   flex: { flex: 1 },
-  tabs: { flexDirection: 'row', padding: 3, borderRadius: radius.control, backgroundColor: '#E9EBEF' },
+  tabs: {
+    flexDirection: 'row',
+    padding: 3,
+    borderRadius: radius.control,
+    backgroundColor: '#E9EBEF',
+  },
   tabOn: {
     flex: 1,
     minHeight: 36,

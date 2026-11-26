@@ -123,6 +123,15 @@ export default function WorkspaceSettingsScreen() {
             <Feather name="chevron-right" size={18} color={colors.muted} />
           </Pressable>
 
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/workspace/[id]/archived', params: { id } })}
+            style={({ pressed }) => [styles.card, styles.linkRow, pressed && styles.pressed]}>
+            <Feather name="archive" size={18} color={colors.ink} />
+            <AppText style={styles.linkText}>Archived boards</AppText>
+            <Feather name="chevron-right" size={18} color={colors.muted} />
+          </Pressable>
+
           <AppText style={styles.dangerLabel}>
             {ws!.role === 'OWNER' ? 'Danger zone · Owner only' : 'Danger zone'}
           </AppText>

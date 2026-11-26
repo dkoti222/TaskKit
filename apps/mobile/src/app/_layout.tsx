@@ -62,6 +62,8 @@ export default function RootLayout() {
             <Stack.Screen name="workspace/[id]/transfer" options={{ presentation: 'modal' }} />
             <Stack.Screen name="board/[id]/index" />
             <Stack.Screen name="board/[id]/settings" />
+            <Stack.Screen name="board/[id]/activity" />
+            <Stack.Screen name="board/[id]/archived" />
             <Stack.Screen name="board/[id]/add-people" options={{ presentation: 'modal' }} />
             <Stack.Screen name="board/[id]/new-card" options={{ presentation: 'modal' }} />
             <Stack.Screen name="board/[id]/card/[cardId]" options={{ presentation: 'modal' }} />

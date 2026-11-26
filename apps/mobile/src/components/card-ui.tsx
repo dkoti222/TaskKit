@@ -108,7 +108,8 @@ export function CardFace({
   active?: boolean;
 }) {
   const { checklist } = card;
-  const hasMeta = !!card.dueAt || checklist.total > 0;
+  const comments = card.commentCount ?? 0;
+  const hasMeta = !!card.dueAt || checklist.total > 0 || comments > 0;
   const a11y = [
     card.title,
     card.labels.length ? `labels ${card.labels.map((l) => l.name).join(', ')}` : null,
@@ -116,6 +117,7 @@ export function CardFace({
       ? `due ${shortDate(card.dueAt)}${dueState(card.dueAt) === 'overdue' ? ', overdue' : ''}`
       : null,
     checklist.total ? `checklist ${checklist.done} of ${checklist.total}` : null,
+    comments ? `${comments} comment${comments === 1 ? '' : 's'}` : null,
     card.assignees.length ? `assigned to ${card.assignees.map((p) => p.name).join(', ')}` : null,
   ]
     .filter(Boolean)
@@ -160,6 +162,12 @@ export function CardFace({
                 ]}>
                 {checklist.done}/{checklist.total}
               </Text>
+            </View>
+          ) : null}
+          {comments > 0 ? (
+            <View style={styles.metaItem}>
+              <Feather name="message-square" size={13} color={colors.muted} />
+              <Text style={styles.metaText}>{comments}</Text>
             </View>
           ) : null}
           {!hasMeta ? <Text style={styles.noDue}>No due date</Text> : null}

@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { refreshSession } from '@/api/client';
 import { queryClient } from '@/api/query-client';
 import type { Board } from '@/api/types';
+import { activityKeys } from '@/hooks/use-activity';
 import { boardKeys } from '@/hooks/use-boards';
 import { cardKeys } from '@/hooks/use-cards';
 import { meQueryKey } from '@/hooks/use-me';
@@ -223,10 +224,18 @@ function refreshBoard(boardId: string) {
 
 function onBoardEvent(event: BoardEvent) {
   if (!joined.has(event.boardId)) return;
-  const me = queryClient.getQueryData<{ id: string }>(meQueryKey);
-  if (me && event.actorId === me.id) return;
 
-  const keys: QueryKey[] = [boardKeys.content(event.boardId)];
+  // History and the archive aren't updated optimistically, so they refresh for every event,
+  // our own included (the Activity row is written right after the event; the 150 ms wait
+  // gives it time).
+  const history: QueryKey[] = [activityKeys.board(event.boardId)];
+  if (event.data?.cardId) history.push(activityKeys.card(event.data.cardId));
+  if (event.type.endsWith('.archived')) history.push(activityKeys.archived(event.boardId));
+
+  const me = queryClient.getQueryData<{ id: string }>(meQueryKey);
+  if (me && event.actorId === me.id) return invalidateSoon(...history);
+
+  const keys: QueryKey[] = [...history, boardKeys.content(event.boardId)];
   if (event.data?.cardId) keys.push(cardKeys.detail(event.data.cardId));
   if (event.type.startsWith('label.')) keys.push(boardKeys.labels(event.boardId));
   if (event.type === 'board.updated') {

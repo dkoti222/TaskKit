@@ -262,6 +262,14 @@ export default function BoardScreen() {
               </AppText>
             ) : null}
           </View>
+          {info ? (
+            <IconButton
+              icon="clock"
+              label="Board activity"
+              onPress={() => router.push({ pathname: '/board/[id]/activity', params: { id } })}
+              color={colors.surface}
+            />
+          ) : null}
           {isViewer ? (
             <View
               style={styles.viewOnly}

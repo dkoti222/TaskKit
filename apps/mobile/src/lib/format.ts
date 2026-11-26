@@ -85,3 +85,36 @@ function parseHex(hex: string) {
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+
+const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+const clock = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+/** "Just now", "5 min ago", "2 hours ago", "Yesterday, 6:40 PM", "Oct 27, 6:40 PM". */
+export function timeAgo(iso: string, now = Date.now()) {
+  const date = new Date(iso);
+  const minutes = Math.floor((now - date.getTime()) / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 12 && sameDay(date, new Date(now)))
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+  if (sameDay(date, new Date(now))) return clock(date);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (sameDay(date, yesterday)) return `Yesterday, ${clock(date)}`;
+  return `${shortDate(iso)}, ${clock(date)}`;
+}
+
+/** Section title for a day: "Today", "Yesterday", or "Oct 27". */
+export function dayLabel(iso: string, now = Date.now()) {
+  const date = new Date(iso);
+  if (sameDay(date, new Date(now))) return 'Today';
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (sameDay(date, yesterday)) return 'Yesterday';
+  return shortDate(iso);
+}

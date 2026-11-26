@@ -16,12 +16,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
-import type { BoardList, CardDetail, CardPerson, Label } from '@/api/types';
+import type { Board, BoardList, CardDetail, CardPerson, Comment, Label } from '@/api/types';
+import { CardTimelineRow } from '@/components/activity-ui';
 import { AppText } from '@/components/app-text';
 import { BoardAccessRemoved, useBoardAccessLost } from '@/components/board-access';
 import { Button } from '@/components/button';
 import { LabelChip, Toast } from '@/components/card-ui';
 import { Checklist } from '@/components/checklist';
+import { CommentComposer } from '@/components/comment-composer';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DueDateField } from '@/components/due-date-field';
 import { InfoNote } from '@/components/info-note';
@@ -31,6 +33,12 @@ import { RealtimeBanner } from '@/components/realtime-banner';
 import { LabelPicker, PickerStatus } from '@/components/pickers';
 import { Sheet } from '@/components/sheet';
 import { MemberAvatar, RoleBadge } from '@/components/workspace-ui';
+import {
+  useAddComment,
+  useCardActivity,
+  useDeleteComment,
+  useEditComment,
+} from '@/hooks/use-activity';
 import { useBoardContent, useLabels } from '@/hooks/use-board-content';
 import { useBoardPeople, type BoardPerson } from '@/hooks/use-board-people';
 import { useBoardRoom } from '@/hooks/use-board-room';
@@ -45,7 +53,8 @@ import {
   useUpdateCard,
   useUpdateChecklistItem,
 } from '@/hooks/use-cards';
-import { canEditCards, canManageLabels } from '@/lib/roles';
+import { useMe } from '@/hooks/use-me';
+import { canEditCards, canManageBoard, canManageLabels } from '@/lib/roles';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 // 15 · Card detail. Every change calls its own endpoint and updates both the card and the
@@ -129,6 +138,7 @@ export default function CardDetailScreen() {
       card={card.data}
       boardId={boardId}
       boardName={board?.name ?? cached?.name ?? ''}
+      board={board}
       lists={content.data?.lists ?? []}
       editable={canEditCards(board?.role)}
       canCreateLabels={canManageLabels(board?.role)}
@@ -143,6 +153,7 @@ function CardBody({
   card,
   boardId,
   boardName,
+  board,
   lists,
   editable: canEdit,
   canCreateLabels,
@@ -153,6 +164,7 @@ function CardBody({
   card: CardDetail;
   boardId: string;
   boardName: string;
+  board: Board | undefined;
   lists: BoardList[];
   editable: boolean;
   canCreateLabels: boolean;
@@ -174,6 +186,23 @@ function CardBody({
   const addItem = useAddChecklistItem(card.id, boardId);
   const updateItem = useUpdateChecklistItem(card.id, boardId);
   const deleteItem = useDeleteChecklistItem(card.id, boardId);
+
+  // Comments and activity (newest first, more on demand).
+  const me = useMe();
+  const meId = me.data?.id;
+  const timeline = useCardActivity(card.id);
+  const { people } = useBoardPeople(board);
+  const addComment = useAddComment(card.id, boardId);
+  const editComment = useEditComment(card.id);
+  const deleteComment = useDeleteComment(card.id, boardId);
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  const [commentMenu, setCommentMenu] = useState<Comment | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Comment | null>(null);
+  // Viewers can read but not comment. The API allows comments on archived cards, but the
+  // whole card is read-only while archived, so we keep it that way here too.
+  const canComment = editable;
+  const canDeleteAny = canManageBoard(board?.role);
+  const entries = timeline.data?.pages.flatMap((p) => p.items) ?? [];
 
   const [title, setTitle] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
@@ -358,6 +387,56 @@ function CardBody({
             onAdd={(text, done) => addItem.mutate(text, { onSuccess: done, onError: showError })}
           />
 
+          <View style={styles.section}>
+            <AppText style={styles.heading} accessibilityRole="header">
+              Comments and activity
+            </AppText>
+            {timeline.isPending ? (
+              <ActivityIndicator color={colors.primary} style={styles.timelineLoading} />
+            ) : timeline.isError && !entries.length ? (
+              <View style={styles.gap}>
+                <AppText variant="secondary">{getErrorMessage(timeline.error)}</AppText>
+                <Button
+                  title="Try again"
+                  variant="secondary"
+                  onPress={() => timeline.refetch()}
+                  style={styles.smallButton}
+                />
+              </View>
+            ) : !entries.length ? (
+              <AppText variant="secondary">
+                {canComment ? 'No comments yet. Start the conversation below.' : 'No comments yet.'}
+              </AppText>
+            ) : (
+              <View>
+                {entries.map((item) => (
+                  <CardTimelineRow
+                    key={item.id}
+                    item={item}
+                    meId={meId}
+                    onCommentLongPress={
+                      canComment
+                        ? (comment) => {
+                            const mine = comment.author.id === meId;
+                            if (mine || canDeleteAny) setCommentMenu(comment);
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+                {timeline.hasNextPage ? (
+                  <Button
+                    title="Show earlier activity"
+                    variant="secondary"
+                    onPress={() => timeline.fetchNextPage()}
+                    loading={timeline.isFetchingNextPage}
+                    style={styles.earlier}
+                  />
+                ) : null}
+              </View>
+            )}
+          </View>
+
           {editable ? (
             <Button
               title="Archive card"
@@ -368,6 +447,31 @@ function CardBody({
             />
           ) : null}
         </ScrollView>
+        {canComment ? (
+          <CommentComposer
+            people={people ?? []}
+            meId={meId}
+            editing={editingComment}
+            pending={addComment.isPending || editComment.isPending}
+            onCancelEdit={() => setEditingComment(null)}
+            onSubmit={(body, done) => {
+              if (editingComment) {
+                editComment.mutate(
+                  { commentId: editingComment.id, body },
+                  {
+                    onSuccess: () => {
+                      setEditingComment(null);
+                      done();
+                    },
+                    onError: showError,
+                  },
+                );
+              } else {
+                addComment.mutate(body, { onSuccess: done, onError: showError });
+              }
+            }}
+          />
+        ) : null}
       </KeyboardAvoidingView>
 
       {summary ? (
@@ -429,6 +533,58 @@ function CardBody({
             onSuccess: () => {
               setConfirmArchive(false);
               onArchived();
+            },
+          })
+        }
+      />
+
+      <Sheet visible={!!commentMenu} onClose={() => setCommentMenu(null)} title="Comment">
+        <View style={styles.menu}>
+          {commentMenu && commentMenu.author.id === meId ? (
+            <Button
+              title="Edit comment"
+              icon="edit-2"
+              variant="secondary"
+              onPress={() => {
+                setEditingComment(commentMenu);
+                setCommentMenu(null);
+              }}
+            />
+          ) : null}
+          <Button
+            title="Delete comment"
+            icon="trash-2"
+            variant="dangerOutline"
+            onPress={() => {
+              setConfirmDelete(commentMenu);
+              setCommentMenu(null);
+            }}
+          />
+        </View>
+      </Sheet>
+
+      <ConfirmDialog
+        visible={!!confirmDelete}
+        icon="trash-2"
+        title="Delete this comment?"
+        message={
+          confirmDelete && confirmDelete.author.id !== meId
+            ? `This removes ${confirmDelete.author.name}’s comment for everyone.`
+            : 'It will be removed for everyone. This can’t be undone.'
+        }
+        confirmLabel="Delete comment"
+        loading={deleteComment.isPending}
+        error={deleteComment.isError ? getErrorMessage(deleteComment.error) : null}
+        onCancel={() => {
+          setConfirmDelete(null);
+          deleteComment.reset();
+        }}
+        onConfirm={() =>
+          confirmDelete &&
+          deleteComment.mutate(confirmDelete, {
+            onSuccess: () => {
+              if (editingComment?.id === confirmDelete.id) setEditingComment(null);
+              setConfirmDelete(null);
             },
           })
         }
@@ -573,6 +729,8 @@ function LabelsSheet({
 }
 
 const styles = StyleSheet.create({
+  timelineLoading: { alignSelf: 'flex-start', marginVertical: spacing.sm },
+  earlier: { marginTop: spacing.sm },
   safe: { flex: 1, backgroundColor: colors.surface },
   flex: { flex: 1 },
   header: {

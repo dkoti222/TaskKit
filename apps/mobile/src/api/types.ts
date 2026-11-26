@@ -126,6 +126,8 @@ export type CardSummary = {
   assignees: CardPerson[];
   labels: Label[];
   checklist: { total: number; done: number };
+  /** Comments not deleted. */
+  commentCount: number;
 };
 
 export type BoardList = { id: string; name: string; position: number; cards: CardSummary[] };
@@ -178,3 +180,70 @@ export type CardDetail = CardFields & {
 export type MovedCard = { id: string; listId: string; position: number; version: number };
 /** PATCH /lists/:id/move */
 export type MovedList = { id: string; position: number };
+
+// ---------- Step 10: comments, activity, archived items ----------
+
+/** A cursor-paginated list. Pass `nextCursor` back as `cursor`; null means the end. */
+export type Page<T> = { items: T[]; nextCursor: string | null };
+
+export type Comment = {
+  id: string;
+  cardId: string;
+  /** Mentions are `@[<userId>]` tokens: show them with `mentions`' names. Empty when deleted. */
+  body: string;
+  createdAt: string;
+  editedAt: string | null;
+  deleted: boolean;
+  author: CardPerson;
+  mentions: { id: string; name: string }[];
+};
+
+/** One history line. `type` is a domain event name; `data` keeps names as they were then. */
+export type ActivityItem = {
+  id: string;
+  type: string;
+  boardId: string;
+  cardId: string | null;
+  createdAt: string;
+  actor: CardPerson;
+  data: ActivityData;
+  /** Only on comment.created: the comment as it is now. */
+  comment?: Comment | null;
+};
+
+export type ActivityData = {
+  cardTitle?: string | null;
+  listName?: string | null;
+  fromListName?: string | null;
+  toListName?: string | null;
+  fields?: ('title' | 'description' | 'dueAt')[];
+  archived?: boolean;
+  userId?: string;
+  userName?: string | null;
+  role?: Role | null;
+  labelName?: string | null;
+  labelColor?: string | null;
+  action?: 'added' | 'checked' | 'unchecked' | 'renamed' | 'deleted';
+  text?: string;
+  commentId?: string;
+  changes?: { name?: string; color?: string; visibility?: BoardVisibility; archived?: boolean };
+};
+
+export type ActivityKind = 'all' | 'cards' | 'members';
+
+export type ArchivedItems = {
+  lists: {
+    id: string;
+    name: string;
+    archivedAt: string;
+    cardCount: number;
+    archivedBy: CardPerson | null;
+  }[];
+  cards: {
+    id: string;
+    title: string;
+    archivedAt: string;
+    list: { id: string; name: string; archived: boolean };
+    archivedBy: CardPerson | null;
+  }[];
+};

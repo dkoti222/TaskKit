@@ -24,7 +24,8 @@ import {
   useSetBoardRole,
   useUpdateBoard,
 } from '@/hooks/use-board-mutations';
-import { findCachedBoard, useBoard, useBoardMembers, useBoards } from '@/hooks/use-boards';
+import { useArchived } from '@/hooks/use-activity';
+import { findCachedBoard, useBoard, useBoardMembers } from '@/hooks/use-boards';
 import { useMe } from '@/hooks/use-me';
 import { useMembers } from '@/hooks/use-workspaces';
 import { BOARD_ROLE_DESCRIPTION, canManageBoard } from '@/lib/roles';
@@ -49,7 +50,8 @@ export default function BoardSettingsScreen() {
   const workspaceId = board.data?.workspaceId ?? cached?.workspaceId ?? '';
   const wsMembers = useMembers(workspaceId);
   const boardMembers = useBoardMembers(id);
-  const archived = useBoards(workspaceId, true);
+  // 18 · this board's archived cards and lists.
+  const archived = useArchived(id);
   const lost = useBoardAccessLost(board.error ?? boardMembers.error, workspaceId);
 
   const update = useUpdateBoard(id, workspaceId);
@@ -102,7 +104,9 @@ export default function BoardSettingsScreen() {
   }, [wsMembers.data, boardMembers.data]);
 
   const goBack = () =>
-    router.canGoBack() ? router.back() : router.replace({ pathname: '/board/[id]', params: { id } });
+    router.canGoBack()
+      ? router.back()
+      : router.replace({ pathname: '/board/[id]', params: { id } });
 
   if (lost) {
     return <BoardAccessRemoved boardName={b?.name ?? cached?.name} workspaceId={workspaceId} />;
@@ -269,13 +273,15 @@ export default function BoardSettingsScreen() {
 
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              router.push({ pathname: '/workspace/[id]/archived', params: { id: workspaceId } })
-            }
+            onPress={() => router.push({ pathname: '/board/[id]/archived', params: { id } })}
             style={({ pressed }) => [styles.card, styles.linkRow, pressed && styles.pressed]}>
             <Feather name="archive" size={18} color={colors.ink} />
             <AppText style={styles.linkText}>Archived items</AppText>
-            {archived.data ? <AppText variant="small">{archived.data.length}</AppText> : null}
+            {archived.data ? (
+              <AppText variant="small">
+                {archived.data.cards.length + archived.data.lists.length}
+              </AppText>
+            ) : null}
             <Feather name="chevron-right" size={18} color={colors.muted} />
           </Pressable>
 

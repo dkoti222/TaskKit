@@ -109,7 +109,8 @@ export function CardFace({
 }) {
   const { checklist } = card;
   const comments = card.commentCount ?? 0;
-  const hasMeta = !!card.dueAt || checklist.total > 0 || comments > 0;
+  const files = card.attachmentCount ?? 0;
+  const hasMeta = !!card.dueAt || checklist.total > 0 || comments > 0 || files > 0;
   const a11y = [
     card.title,
     card.labels.length ? `labels ${card.labels.map((l) => l.name).join(', ')}` : null,
@@ -118,6 +119,7 @@ export function CardFace({
       : null,
     checklist.total ? `checklist ${checklist.done} of ${checklist.total}` : null,
     comments ? `${comments} comment${comments === 1 ? '' : 's'}` : null,
+    files ? `${files} attachment${files === 1 ? '' : 's'}` : null,
     card.assignees.length ? `assigned to ${card.assignees.map((p) => p.name).join(', ')}` : null,
   ]
     .filter(Boolean)
@@ -168,6 +170,12 @@ export function CardFace({
             <View style={styles.metaItem}>
               <Feather name="message-square" size={13} color={colors.muted} />
               <Text style={styles.metaText}>{comments}</Text>
+            </View>
+          ) : null}
+          {files > 0 ? (
+            <View style={styles.metaItem}>
+              <Feather name="paperclip" size={13} color={colors.muted} />
+              <Text style={styles.metaText}>{files}</Text>
             </View>
           ) : null}
           {!hasMeta ? <Text style={styles.noDue}>No due date</Text> : null}

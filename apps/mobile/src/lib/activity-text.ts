@@ -79,6 +79,10 @@ export function describeActivity(
     }
     case 'comment.created':
       return onCard ? [t('commented')] : [t('commented on '), card];
+    case 'card.attachment.added':
+      return [t('attached '), s(d.fileName, 'a file'), ...(onCard ? [] : [t(' to '), card])];
+    case 'card.attachment.removed':
+      return [t('removed '), s(d.fileName, 'a file'), ...(onCard ? [] : [t(' from '), card])];
     case 'list.created':
       return [t('created the list '), s(d.listName, 'a list')];
     case 'list.updated':

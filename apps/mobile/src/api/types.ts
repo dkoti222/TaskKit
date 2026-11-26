@@ -128,6 +128,8 @@ export type CardSummary = {
   checklist: { total: number; done: number };
   /** Comments not deleted. */
   commentCount: number;
+  /** Files attached (Step 12). */
+  attachmentCount: number;
 };
 
 export type BoardList = { id: string; name: string; position: number; cards: CardSummary[] };
@@ -226,6 +228,7 @@ export type ActivityData = {
   action?: 'added' | 'checked' | 'unchecked' | 'renamed' | 'deleted';
   text?: string;
   commentId?: string;
+  fileName?: string;
   changes?: { name?: string; color?: string; visibility?: BoardVisibility; archived?: boolean };
 };
 
@@ -277,3 +280,20 @@ export type AppNotification = {
 };
 
 export type NotificationSettings = { push: boolean; mentionEmail: boolean; dueReminders: boolean };
+
+// ---------- Step 12: attachments ----------
+
+export type Attachment = {
+  id: string;
+  cardId: string;
+  fileName: string;
+  mimeType: string;
+  /** Bytes. */
+  size: number;
+  createdAt: string;
+  uploader: CardPerson | null;
+  /** Images only: a thumbnail link valid for 10 minutes. */
+  previewUrl: string | null;
+};
+
+export type UploadTarget = { url: string; method: 'PUT'; headers: Record<string, string> };

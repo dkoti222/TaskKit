@@ -139,6 +139,7 @@ export function useCreateCard(boardId: string) {
         assignees,
         labels,
         commentCount: 0,
+        attachmentCount: 0,
         checklist: { total: 0, done: 0 },
       };
       queryClient.setQueryData<BoardContent>(contentKey, (old) =>

@@ -34,7 +34,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TaskKit needs your photos so you can attach them to cards."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

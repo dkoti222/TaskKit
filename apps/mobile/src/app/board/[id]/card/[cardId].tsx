@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import type { Board, BoardList, CardDetail, CardPerson, Comment, Label } from '@/api/types';
 import { CardTimelineRow } from '@/components/activity-ui';
+import { AttachmentsSection } from '@/components/attachments';
 import { AppText } from '@/components/app-text';
 import { BoardAccessRemoved, useBoardAccessLost } from '@/components/board-access';
 import { Button } from '@/components/button';
@@ -385,6 +386,15 @@ function CardBody({
             }
             onDelete={(item) => deleteItem.mutate(item.id, { onError: showError })}
             onAdd={(text, done) => addItem.mutate(text, { onSuccess: done, onError: showError })}
+          />
+
+          <AttachmentsSection
+            cardId={card.id}
+            boardId={boardId}
+            meId={meId}
+            canEdit={editable}
+            canDeleteAny={canDeleteAny}
+            onError={showError}
           />
 
           <View style={styles.section}>

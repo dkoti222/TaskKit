@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -32,6 +32,7 @@ import { findCachedBoard, useBoard } from '@/hooks/use-boards';
 import { useCreateLists } from '@/hooks/use-lists';
 import { useMe } from '@/hooks/use-me';
 import { useMoveCard, useMoveList } from '@/hooks/use-move';
+import { useLiveToast } from '@/realtime/socket';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { dueState, tint } from '@/lib/format';
 import { canEditCards } from '@/lib/roles';
@@ -67,7 +68,19 @@ export default function BoardScreen() {
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [bodyHeight, setBodyHeight] = useState(0);
-  const hideToast = useCallback(() => setToast(null), []);
+  // Someone else's change, as a green toast ("Sana moved Drag and drop to Doing").
+  const [live, setLive] = useState<string | null>(null);
+  useEffect(
+    () =>
+      useLiveToast.subscribe((t) => {
+        if (t?.boardId === id) setLive(t.text);
+      }),
+    [id],
+  );
+  const hideToast = useCallback(() => {
+    setToast(null);
+    setLive(null);
+  }, []);
 
   const info = content.data?.board ?? board.data;
   // 14 · Board (Viewer): the role comes from GET /boards/:id/content (`board.role`).
@@ -323,7 +336,7 @@ export default function BoardScreen() {
         {body}
       </View>
 
-      <Toast message={toast} onHide={hideToast} />
+      <Toast message={toast ?? live} tone={toast ? 'error' : 'info'} onHide={hideToast} />
 
       {editable ? (
         <ListActionsSheet

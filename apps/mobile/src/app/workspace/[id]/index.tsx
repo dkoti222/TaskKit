@@ -14,13 +14,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import type { Member, Workspace } from '@/api/types';
 import { AccessRemoved } from '@/components/access-removed';
+import { BoardActivityRow } from '@/components/activity-ui';
 import { AppText } from '@/components/app-text';
 import { BoardCard, NewBoardTile } from '@/components/board-ui';
 import { Button } from '@/components/button';
 import { IconButton } from '@/components/misc';
 import { NavHeader } from '@/components/nav-header';
 import { MemberAvatar, RoleBadge } from '@/components/workspace-ui';
+import { useWorkspaceActivity } from '@/hooks/use-activity';
 import { useBoards } from '@/hooks/use-boards';
+import { useMe } from '@/hooks/use-me';
 import { useMembers, useWorkspace } from '@/hooks/use-workspaces';
 import { plural } from '@/lib/format';
 import { canCreateBoard } from '@/lib/roles';
@@ -28,13 +31,15 @@ import { colors, fonts, radius, spacing } from '@/theme';
 
 const GRID_GAP = 12;
 
-// 08 · Workspace boards. "Recent activity" from the design is left out: there's no activity API yet.
+// 08 · Workspace boards: members, the boards grid (with list and card counts) and recent activity.
 export default function WorkspaceBoardsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workspace = useWorkspace(id);
   const members = useMembers(id);
   const boards = useBoards(id);
   const archived = useBoards(id, true);
+  const recent = useWorkspaceActivity(id, 3);
+  const me = useMe();
   const { width } = useWindowDimensions();
   const tileWidth = (width - spacing.lg * 2 - GRID_GAP) / 2;
 
@@ -70,7 +75,9 @@ export default function WorkspaceBoardsScreen() {
     void members.refetch();
     void boards.refetch();
     void archived.refetch();
+    void recent.refetch();
   };
+  const recentItems = recent.data?.pages[0]?.items ?? [];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -135,6 +142,44 @@ export default function WorkspaceBoardsScreen() {
               </>
             )}
 
+            {recentItems.length ? (
+              <>
+                <View style={styles.sectionRow}>
+                  <AppText style={styles.sectionTitle} accessibilityRole="header">
+                    Recent activity
+                  </AppText>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="See all activity"
+                    hitSlop={10}
+                    onPress={() =>
+                      router.push({ pathname: '/workspace/[id]/activity', params: { id } })
+                    }>
+                    <AppText style={styles.seeAll}>See all</AppText>
+                  </Pressable>
+                </View>
+                <View style={styles.activityCard}>
+                  {recentItems.map((item, index) => (
+                    <View key={item.id} style={index > 0 && styles.activityDivider}>
+                      <BoardActivityRow
+                        item={item}
+                        meId={me.data?.id}
+                        showBoard
+                        onPress={() =>
+                          item.cardId
+                            ? router.push({
+                                pathname: '/board/[id]/card/[cardId]',
+                                params: { id: item.boardId, cardId: item.cardId },
+                              })
+                            : openBoard(item.boardId)
+                        }
+                      />
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
             {archived.data?.length ? (
               <Pressable
                 accessibilityRole="button"
@@ -143,7 +188,7 @@ export default function WorkspaceBoardsScreen() {
                 }
                 style={({ pressed }) => [styles.archivedRow, pressed && styles.pressedRow]}>
                 <Feather name="archive" size={18} color={colors.ink} />
-                <AppText style={styles.archivedText}>Archived items</AppText>
+                <AppText style={styles.archivedText}>Archived boards</AppText>
                 <AppText variant="small">{archived.data.length}</AppText>
                 <Feather name="chevron-right" size={18} color={colors.muted} />
               </Pressable>
@@ -235,6 +280,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   sectionTitle: { fontFamily: fonts.semibold, fontSize: 17 },
+  seeAll: { fontFamily: fonts.medium, fontSize: 14, color: colors.primary },
+  activityCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    paddingHorizontal: spacing.md,
+  },
+  activityDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
   empty: {
     backgroundColor: colors.surface,

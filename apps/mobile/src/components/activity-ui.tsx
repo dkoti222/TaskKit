@@ -83,24 +83,29 @@ export function BoardActivityRow({
   item,
   meId,
   onPress,
+  showBoard,
 }: {
   item: ActivityItem;
   meId?: string;
   onPress?: () => void;
+  /** Workspace activity: "App v2 · 5 min ago" under the sentence. */
+  showBoard?: boolean;
 }) {
+  const time = timeAgo(item.createdAt);
+  const meta = showBoard && item.board ? `${item.board.name} · ${time}` : time;
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={`${activitySentence(item, meId)}, ${timeAgo(item.createdAt)}`}
+      accessibilityLabel={`${activitySentence(item, meId)}, ${meta}`}
       accessibilityHint={onPress ? 'Opens the card' : undefined}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <MemberAvatar name={item.actor.name} seed={item.actor.id} size={30} />
       <View style={styles.flex}>
         <Sentence item={item} meId={meId} />
         {item.type === 'comment.created' ? <CommentBubble comment={item.comment} /> : null}
-        <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+        <Text style={styles.time}>{meta}</Text>
       </View>
     </Pressable>
   );

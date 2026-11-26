@@ -13,20 +13,28 @@ import { NavHeader } from '@/components/nav-header';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { WorkspaceTile } from '@/components/workspace-ui';
-import { useLeaveWorkspace, useUpdateWorkspace } from '@/hooks/use-workspace-mutations';
+import {
+  useDeleteWorkspace,
+  useLeaveWorkspace,
+  useUpdateWorkspace,
+} from '@/hooks/use-workspace-mutations';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { canManageWorkspace } from '@/lib/roles';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 // 24 · Workspace settings. Everyone can open it: Owner/Admin can rename, the Owner can transfer
 // ownership, and everyone but the Owner can leave.
-// Not built: logo and workspace rules toggles (no API), Delete workspace (deferred).
+// Not built: logo and workspace rules toggles (no API).
+// The Owner can delete the workspace (typing its name to confirm).
 export default function WorkspaceSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workspace = useWorkspace(id);
   const update = useUpdateWorkspace(id);
   const leave = useLeaveWorkspace(id);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const remove = useDeleteWorkspace(id);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [typedName, setTypedName] = useState('');
 
   // null = not edited yet, so the field shows the saved value (and picks up refetches).
   const [name, setName] = useState<string | null>(null);
@@ -160,7 +168,51 @@ export default function WorkspaceSettingsScreen() {
                 setConfirmLeave(true);
               }}
             />
+            {ws!.role === 'OWNER' ? (
+              <DangerRow
+                title="Delete workspace"
+                detail="Deletes every board, list, card and file in it, for everyone. Can’t be undone."
+                danger
+                divider
+                onPress={() => {
+                  remove.reset();
+                  setTypedName('');
+                  setConfirmDelete(true);
+                }}
+              />
+            ) : null}
           </View>
+          {confirmDelete ? (
+            <View style={[styles.card, styles.deleteCard]}>
+              <AppText style={styles.deleteTitle}>Delete {ws!.name}?</AppText>
+              <AppText variant="secondary">
+                Everything in it is deleted for all {ws!.memberCount} members. Type the workspace
+                name to confirm.
+              </AppText>
+              <TextField
+                label="Workspace name"
+                value={typedName}
+                onChangeText={setTypedName}
+                placeholder={ws!.name}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <FormMessage message={remove.isError ? getErrorMessage(remove.error) : null} />
+              <Button
+                title="Delete workspace"
+                variant="danger"
+                loading={remove.isPending}
+                disabled={typedName.trim() !== ws!.name}
+                onPress={() => remove.mutate(undefined, { onSuccess: () => router.dismissTo('/') })}
+              />
+              <Button
+                title="Cancel"
+                variant="secondary"
+                disabled={remove.isPending}
+                onPress={() => setConfirmDelete(false)}
+              />
+            </View>
+          ) : null}
         </View>
       )}
 
@@ -230,6 +282,8 @@ function DangerRow({
 }
 
 const styles = StyleSheet.create({
+  deleteCard: { borderColor: colors.danger, gap: spacing.md },
+  deleteTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.danger },
   flex: { flex: 1 },
   dangerLabel: {
     fontFamily: fonts.semibold,

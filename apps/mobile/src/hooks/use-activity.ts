@@ -13,6 +13,7 @@ import {
   getArchived,
   listBoardActivity,
   listCardActivity,
+  listWorkspaceActivity,
   restoreCard,
   restoreList,
   updateComment,
@@ -30,6 +31,7 @@ export const activityKeys = {
   boardKind: (boardId: string, kind: ActivityKind) =>
     [...activityKeys.board(boardId), kind] as const,
   archived: (boardId: string) => [...boardKeys.detail(boardId), 'archived'] as const,
+  workspace: (workspaceId: string) => ['workspace-activity', workspaceId] as const,
 };
 
 type Pages = InfiniteData<Page<ActivityItem>, string | null>;
@@ -54,6 +56,18 @@ export function useBoardActivity(boardId: string, kind: ActivityKind) {
     getNextPageParam: (last) => last.nextCursor,
     refetchOnMount: 'always',
     enabled: !!boardId,
+  });
+}
+
+/** GET /workspaces/:id/activity, page by page. Always fresh on open. */
+export function useWorkspaceActivity(workspaceId: string, limit = 20) {
+  return useInfiniteQuery({
+    queryKey: [...activityKeys.workspace(workspaceId), limit],
+    queryFn: ({ pageParam }) => listWorkspaceActivity(workspaceId, pageParam, limit),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
+    refetchOnMount: 'always',
+    enabled: !!workspaceId,
   });
 }
 

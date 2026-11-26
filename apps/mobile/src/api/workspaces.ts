@@ -111,3 +111,12 @@ export async function leaveWorkspace(workspaceId: string) {
   const { data } = await api.post<MessageResponse>(`/workspaces/${workspaceId}/leave`);
   return data;
 }
+
+/**
+ * Owner only. Deletes the workspace with all its boards, lists, cards and files for everyone.
+ * Can't be undone.
+ */
+export async function deleteWorkspace(workspaceId: string) {
+  const { data } = await api.delete<MessageResponse>(`/workspaces/${workspaceId}`);
+  return data;
+}

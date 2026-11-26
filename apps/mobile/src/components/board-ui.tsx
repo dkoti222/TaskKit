@@ -25,7 +25,14 @@ export function BoardCard({
   onPress: () => void;
 }) {
   const isPrivate = board.visibility === 'PRIVATE';
-  const meta = `${VISIBILITY_LABEL[board.visibility]} · ${ROLE_LABEL[board.role]}`;
+  // "4 lists · 18 cards", or "Private · 3 members" (design 08). Older data without counts
+  // falls back to visibility and role.
+  const meta =
+    isPrivate && board.memberCount !== undefined
+      ? `Private · ${board.memberCount} ${board.memberCount === 1 ? 'member' : 'members'}`
+      : board.listCount !== undefined && board.cardCount !== undefined
+        ? `${board.listCount} ${board.listCount === 1 ? 'list' : 'lists'} · ${board.cardCount} ${board.cardCount === 1 ? 'card' : 'cards'}`
+        : `${VISIBILITY_LABEL[board.visibility]} · ${ROLE_LABEL[board.role]}`;
   return (
     <Pressable
       accessibilityRole="button"

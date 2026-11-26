@@ -3,10 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AssignableRole, Member, Workspace } from '@/api/types';
 import {
   changeMemberRole,
+  deleteWorkspace,
   leaveWorkspace,
   removeMember,
-  transferOwnership,
   revokeInvitation,
+  transferOwnership,
   updateWorkspace,
 } from '@/api/workspaces';
 import { workspaceKeys } from './use-workspaces';
@@ -108,6 +109,18 @@ export function useLeaveWorkspace(workspaceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => leaveWorkspace(workspaceId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: workspaceKeys.list(), exact: true }),
+  });
+}
+
+/**
+ * DELETE /workspaces/:id (Owner). Like leaving: the caller goes home on success, and only the
+ * home list is refreshed so the screens still open don't flash "no access".
+ */
+export function useDeleteWorkspace(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteWorkspace(workspaceId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: workspaceKeys.list(), exact: true }),
   });
 }

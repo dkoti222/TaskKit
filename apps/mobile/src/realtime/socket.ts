@@ -6,12 +6,14 @@ import { create } from 'zustand';
 
 import { refreshSession } from '@/api/client';
 import { queryClient } from '@/api/query-client';
-import type { Board } from '@/api/types';
+import type { Board, BoardContent } from '@/api/types';
 import { activityKeys } from '@/hooks/use-activity';
 import { boardKeys } from '@/hooks/use-boards';
 import { cardKeys } from '@/hooks/use-cards';
 import { meQueryKey } from '@/hooks/use-me';
 import { notificationKeys } from '@/hooks/use-notifications';
+import { findCard } from '@/lib/board-cache';
+import { firstName } from '@/lib/format';
 import { useSession } from '@/store/session';
 
 /**
@@ -227,6 +229,59 @@ function refreshBoard(boardId: string) {
   invalidateSoon(boardKeys.content(boardId), boardKeys.labels(boardId), cardKeys.all);
 }
 
+// ---------- Live toast (13 · "Sana moved Drag and drop to Doing") ----------
+
+/** The latest change by someone else, for the board screen's toast. `at` makes repeats new. */
+export const useLiveToast = create<{ boardId: string; text: string; at: number } | null>(
+  () => null,
+);
+
+/** A person's name from whatever member lists are cached (workspace or board members). */
+function nameOf(userId: string) {
+  for (const [, data] of queryClient.getQueriesData<unknown>({ queryKey: ['workspaces'] })) {
+    if (!Array.isArray(data)) continue;
+    const m = data.find((x: { userId?: string }) => x?.userId === userId) as
+      { name?: string } | undefined;
+    if (m?.name) return firstName(m.name);
+  }
+  for (const [, data] of queryClient.getQueriesData<unknown>({ queryKey: boardKeys.all })) {
+    if (!Array.isArray(data)) continue;
+    const m = data.find((x: { userId?: string }) => x?.userId === userId) as
+      { name?: string } | undefined;
+    if (m?.name) return firstName(m.name);
+  }
+  return 'Someone';
+}
+
+/** One short sentence for the events worth a toast, from the board as it is on screen now. */
+function liveText(event: BoardEvent): string | null {
+  const content = queryClient.getQueryData<BoardContent>(boardKeys.content(event.boardId));
+  const d = event.data as Record<string, string | boolean | undefined>;
+  const card = d.cardId
+    ? (findCard(content, d.cardId as string)?.card.title ?? 'a card')
+    : 'a card';
+  const list = (listId: unknown) => content?.lists.find((l) => l.id === listId)?.name;
+  const who = nameOf(event.actorId);
+  switch (event.type) {
+    case 'card.moved':
+      return d.fromListId === d.listId
+        ? null
+        : `${who} moved ${card} to ${list(d.listId) ?? 'another list'}`;
+    case 'card.created':
+      return `${who} added a card${list(d.listId) ? ` to ${list(d.listId)}` : ''}`;
+    case 'card.archived':
+      return d.archived ? `${who} archived ${card}` : `${who} restored ${card}`;
+    case 'comment.created':
+      return `${who} commented on ${card}`;
+    case 'card.attachment.added':
+      return `${who} attached ${String(d.fileName ?? 'a file')}`;
+    case 'list.created':
+      return `${who} added the list ${String(d.name ?? '')}`.trim();
+    default:
+      return null;
+  }
+}
+
 function onBoardEvent(event: BoardEvent) {
   if (!joined.has(event.boardId)) return;
 
@@ -239,6 +294,10 @@ function onBoardEvent(event: BoardEvent) {
 
   const me = queryClient.getQueryData<{ id: string }>(meQueryKey);
   if (me && event.actorId === me.id) return invalidateSoon(...history);
+
+  // Read the names before the refetch replaces the board on screen.
+  const text = liveText(event);
+  if (text) useLiveToast.setState({ boardId: event.boardId, text, at: Date.now() }, true);
 
   const keys: QueryKey[] = [...history, boardKeys.content(event.boardId)];
   if (event.data?.cardId) keys.push(cardKeys.detail(event.data.cardId));

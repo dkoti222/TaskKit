@@ -91,7 +91,13 @@ export type BoardFields = {
 };
 
 /** A board as seen by the current user: `role` is their effective board role. */
-export type Board = BoardFields & { role: Role };
+export type Board = BoardFields & {
+  role: Role;
+  /** From GET /workspaces/:id/boards: lists and cards not archived, people added to the board. */
+  listCount?: number;
+  cardCount?: number;
+  memberCount?: number;
+};
 
 export type BoardMember = {
   userId: string;
@@ -205,6 +211,7 @@ export type ActivityItem = {
   id: string;
   type: string;
   boardId: string;
+  board?: { id: string; name: string; color: string };
   cardId: string | null;
   createdAt: string;
   actor: CardPerson;
@@ -229,6 +236,7 @@ export type ActivityData = {
   text?: string;
   commentId?: string;
   fileName?: string;
+  boardName?: string;
   changes?: { name?: string; color?: string; visibility?: BoardVisibility; archived?: boolean };
 };
 

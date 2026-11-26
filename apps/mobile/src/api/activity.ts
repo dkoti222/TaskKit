@@ -42,6 +42,18 @@ export async function listBoardActivity(
   return data;
 }
 
+/** 08 · Recent activity: every board in the workspace you can see. */
+export async function listWorkspaceActivity(
+  workspaceId: string,
+  cursor?: string | null,
+  limit = 20,
+) {
+  const { data } = await api.get<Page<ActivityItem>>(`/workspaces/${workspaceId}/activity`, {
+    params: { cursor: cursor ?? undefined, limit },
+  });
+  return data;
+}
+
 // ---------- Archived items (18) ----------
 
 export async function getArchived(boardId: string) {

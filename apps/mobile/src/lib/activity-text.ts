@@ -95,6 +95,8 @@ export function describeActivity(
       return [t('created the label '), s(d.labelName, 'a label')];
     case 'label.deleted':
       return [t('deleted the label '), s(d.labelName, 'a label')];
+    case 'board.created':
+      return [t('created the board '), s(d.boardName, 'a board')];
     case 'board.updated': {
       const c = d.changes ?? {};
       if (c.archived !== undefined)

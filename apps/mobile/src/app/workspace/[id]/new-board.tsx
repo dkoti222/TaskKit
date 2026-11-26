@@ -1,8 +1,10 @@
+import Feather from '@expo/vector-icons/Feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/errors';
+import { createList } from '@/api/lists';
 import type { BoardVisibility } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { BOARD_COLORS, ColorSwatches, VisibilityOptions } from '@/components/board-ui';
@@ -15,7 +17,9 @@ import { useCreateBoard } from '@/hooks/use-board-mutations';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { colors, fonts, spacing } from '@/theme';
 
-// 09 · Create board. "Start with default lists" from the design is left out until the lists API exists.
+const DEFAULT_LISTS = ['To do', 'Doing', 'Done'];
+
+// 09 · Create board: name, color, visibility, and (on by default) the lists To do, Doing, Done.
 export default function NewBoardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workspace = useWorkspace(id);
@@ -25,6 +29,8 @@ export default function NewBoardScreen() {
   const [color, setColor] = useState(BOARD_COLORS[0]);
   const [visibility, setVisibility] = useState<BoardVisibility>('WORKSPACE');
   const [formError, setFormError] = useState<string | null>(null);
+  const [defaultLists, setDefaultLists] = useState(true);
+  const [addingLists, setAddingLists] = useState(false);
 
   const close = () =>
     router.canGoBack()
@@ -39,7 +45,17 @@ export default function NewBoardScreen() {
     create.mutate(
       { name: trimmed, color, visibility },
       {
-        onSuccess: (board) => {
+        onSuccess: async (board) => {
+          if (defaultLists) {
+            setAddingLists(true);
+            try {
+              // One at a time, so they end up in this order.
+              for (const list of DEFAULT_LISTS) await createList(board.id, list);
+            } catch {
+              // The board exists either way; its empty state (29) lets people add lists.
+            }
+            setAddingLists(false);
+          }
           // Swap this modal for the new board.
           close();
           router.push({ pathname: '/board/[id]', params: { id: board.id } });
@@ -53,10 +69,14 @@ export default function NewBoardScreen() {
   return (
     <Screen
       navHeader={<NavHeader title="New board" onBack={close} backIcon="x" />}
-      bottomBar={<Button title="Create board" onPress={submit} loading={create.isPending} />}>
+      bottomBar={
+        <Button title="Create board" onPress={submit} loading={create.isPending || addingLists} />
+      }>
       <View style={styles.top}>
         <View style={[styles.preview, { backgroundColor: color }]} accessible={false}>
-          <Text style={[styles.previewName, !name.trim() && styles.previewPlaceholder]} numberOfLines={1}>
+          <Text
+            style={[styles.previewName, !name.trim() && styles.previewPlaceholder]}
+            numberOfLines={1}>
             {name.trim() || 'Board name'}
           </Text>
         </View>
@@ -91,6 +111,21 @@ export default function NewBoardScreen() {
           />
         </View>
 
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: defaultLists }}
+          accessibilityLabel="Start with default lists: To do, Doing, Done"
+          onPress={() => setDefaultLists(!defaultLists)}
+          style={styles.defaultRow}>
+          <View style={styles.flex}>
+            <AppText style={styles.defaultTitle}>Start with default lists</AppText>
+            <AppText variant="small">{DEFAULT_LISTS.join(', ')}</AppText>
+          </View>
+          <View style={[styles.box, defaultLists && styles.boxOn]}>
+            {defaultLists ? <Feather name="check" size={14} color={colors.surface} /> : null}
+          </View>
+        </Pressable>
+
         <FormMessage message={error} />
       </View>
     </Screen>
@@ -109,4 +144,17 @@ const styles = StyleSheet.create({
   previewName: { fontFamily: fonts.semibold, fontSize: 17, color: colors.surface },
   previewPlaceholder: { opacity: 0.7 },
   group: { gap: spacing.sm },
+  flex: { flex: 1 },
+  defaultRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 48 },
+  defaultTitle: { fontFamily: fonts.medium, fontSize: 15 },
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
 });

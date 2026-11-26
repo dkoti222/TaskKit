@@ -6,3 +6,10 @@ node_modules
 
 # Attachments stored by the local storage driver (Step 12)
 uploads/
+
+# Test database settings (Step 14)
+.env.test
+# Files uploaded during e2e tests
+uploads-test/
+# Coverage reports
+coverage/

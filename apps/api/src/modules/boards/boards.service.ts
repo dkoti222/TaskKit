@@ -56,7 +56,7 @@ export class BoardsService {
   async update(ctx: BoardEventContext, dto: UpdateBoardDto) {
     const board = await this.prisma.board.update({ where: { id: ctx.boardId }, data: dto });
     // A visibility change (WORKSPACE -> PRIVATE) can remove people's access.
-    this.events.emit({ ...ctx, type: 'board.updated', data: { changes: { ...dto } } });
+    this.events.emit({ ...ctx, type: 'board.updated', data: { changes: { name: dto.name, color: dto.color, visibility: dto.visibility } } });
     return board;
   }
 

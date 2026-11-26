@@ -56,7 +56,7 @@ export class PushService {
         });
       } catch (error) {
         // Network trouble or Expo down: the in-app notification is already saved.
-        this.logger.warn(`Couldn't reach Expo push: ${error instanceof Error ? error.message : error}`);
+        this.logger.warn(`Couldn't reach Expo push: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     if (dead.size) {

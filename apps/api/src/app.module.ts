@@ -1,5 +1,5 @@
   import { Module } from '@nestjs/common';
-  import { ConfigModule } from '@nestjs/config';
+  import { ConditionalModule, ConfigModule } from '@nestjs/config';
   import { HealthModule } from './health/health.module';
   import { PrismaModule } from './prisma/prisma.module';
   import { UsersModule } from './modules/users/users.module';
@@ -34,7 +34,11 @@ import { SearchModule } from './modules/search/search.module';
       RealtimeModule,
       CommentsModule,
       ActivityModule,
-      NotificationsModule,
+      // Needs Redis. NOTIFICATIONS_ENABLED=false turns it off (e2e tests, or no Redis yet).
+      ConditionalModule.registerWhen(
+        NotificationsModule,
+        (env: NodeJS.ProcessEnv) => env.NOTIFICATIONS_ENABLED !== 'false',
+      ),
       AttachmentsModule,
       SearchModule,
     ],

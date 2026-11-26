@@ -22,6 +22,10 @@ TaskKit/
 - Git: work on the `dev` branch. Commit messages use Conventional Commits with a scope:
   `feat(mobile): add login screen`, `fix(mobile): …`. Don't commit to `main`. Don't push unless asked.
 - Never commit `.env` files. Keep `.env.example` up to date.
+- Tests (Step 14): `apps/api`: `npm test` (unit), `npm run test:e2e` (needs `.env.test` pointing at
+  a `*_test` database; empties it), `npm run test:db:reset`. `apps/mobile`: `npm test`.
+  CI runs both apps on every push (`.github/workflows/ci.yml`).
+- Without Redis, set `NOTIFICATIONS_ENABLED="false"` in `apps/api/.env`.
 
 ## Mobile stack (apps/mobile)
 
@@ -32,6 +36,7 @@ TaskKit/
 - **expo-secure-store** for tokens — never AsyncStorage for tokens
 - Folders: `app/` screens · `src/api/` API functions · `src/components/` shared UI ·
   `src/store/` state · `src/theme/` colors and spacing · `src/hooks/` hooks ·
+  `src/notifications/` push registration ·
   `src/realtime/` the Socket.IO connection (live board updates; screens use `useBoardRoom(boardId)`)
 - Install Expo packages with `npx expo install <pkg>`; ask before adding any other large library.
 - Test on a real phone with Expo Go. The phone reaches the API through the Mac's LAN IP,

@@ -13,6 +13,7 @@ import { sha256 } from '../../common/utils/hash';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import type { WorkspaceMember } from '../../generated/prisma/client';
 import type { AuthUser } from '../auth/decorators/current-user.decorator';
+import { DomainEvents } from '../../common/events/domain-events.service';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -22,6 +23,7 @@ export class InvitationsService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly events: DomainEvents,
   ) {}
 
   async create(actor: WorkspaceMember, workspaceId: string, dto: CreateInvitationDto) {
@@ -56,6 +58,13 @@ export class InvitationsService {
 
     const base = this.config.get<string>('INVITE_URL') ?? 'taskkit://invite';
     await this.mail.sendInvitation(dto.email, invitation.workspace.name, `${base}/${token}`);
+    // If this email already has an account, they also get an in-app notification (Step 11).
+    this.events.emit({
+      type: 'invitation.created',
+      workspaceId,
+      actorId: actor.userId,
+      data: { email: dto.email, role: dto.role, token },
+    });
 
     return {
       id: invitation.id,

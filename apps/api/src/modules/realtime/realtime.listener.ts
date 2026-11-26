@@ -5,9 +5,10 @@ import {
   ACCESS_EVENT_TYPES,
   BOARD_EVENT_TYPES,
   type BoardEvent,
+  type NotificationCreatedEvent,
   type WorkspaceEvent,
 } from '../../common/events/domain-events';
-import { boardRoom, RealtimeGateway } from './realtime.gateway';
+import { boardRoom, RealtimeGateway, userRoom } from './realtime.gateway';
 
 /**
  * Turns domain events into socket messages:
@@ -62,6 +63,12 @@ export class RealtimeListener implements OnModuleInit {
         await this.gateway.recheckRoom(id);
       }
     });
+  }
+
+  /** A new notification: straight to that user's phones (Step 11). */
+  @OnEvent('notification.created')
+  onNotification(event: NotificationCreatedEvent) {
+    this.gateway.server.to(userRoom(event.userId)).emit('notification:new', event.notification);
   }
 
   @OnEvent('workspace.deleted')

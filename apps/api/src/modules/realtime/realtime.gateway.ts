@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
@@ -18,6 +19,8 @@ import { BoardAccessService } from '../boards/board-access.service';
 export type SocketData = { userId: string; expiryTimer?: NodeJS.Timeout };
 
 export const boardRoom = (boardId: string) => `board:${boardId}`;
+/** Every socket of one user (all their phones). Used for `notification:new` (Step 11). */
+export const userRoom = (userId: string) => `user:${userId}`;
 
 /**
  * The WebSocket entry point. It shares the HTTP server and port (3000), at path /socket.io.
@@ -29,12 +32,13 @@ export const boardRoom = (boardId: string) => `board:${boardId}`;
  * - `board:join { boardId }`: checks access with the same rules as HTTP, then joins the room
  *   `board:<id>`. Replies `{ ok: true, role }` or `{ ok: false, error }`.
  * - `board:leave { boardId }`: leaves the room.
+ * - Every socket is also in `user:<id>` from the start, for `notification:new`.
  *
  * Sending events to the rooms is done by RealtimeListener.
  */
 @SkipThrottle()
 @WebSocketGateway({ cors: { origin: '*' } })
-export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RealtimeGateway.name);
 
   @WebSocketServer()
@@ -65,6 +69,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
         next(new Error('unauthorized'));
       }
     });
+  }
+
+  /** Runs after the auth middleware let the socket in. */
+  async handleConnection(socket: Socket) {
+    await socket.join(userRoom((socket.data as SocketData).userId));
   }
 
   handleDisconnect(socket: Socket) {

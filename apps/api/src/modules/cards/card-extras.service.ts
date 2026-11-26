@@ -23,20 +23,24 @@ export class CardExtrasService {
     if (!target || target.role === 'VIEWER') {
       throw new BadRequestException("This person can't be assigned on this board");
     }
-    await this.prisma.cardAssignee.upsert({
+    // Already assigned: nothing changes, so no version bump and no event (no second notification).
+    const existing = await this.prisma.cardAssignee.findUnique({
       where: { cardId_userId: { cardId, userId } },
-      create: { cardId, userId },
-      update: {},
     });
-    await this.bumpVersion(cardId);
-    this.events.emit({ ...ctx, type: 'card.assignee.added', data: { cardId, userId } });
+    if (!existing) {
+      await this.prisma.cardAssignee.create({ data: { cardId, userId } });
+      await this.bumpVersion(cardId);
+      this.events.emit({ ...ctx, type: 'card.assignee.added', data: { cardId, userId } });
+    }
     return this.listAssignees(cardId);
   }
 
   async removeAssignee(ctx: BoardEventContext, cardId: string, userId: string) {
-    await this.prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
-    await this.bumpVersion(cardId);
-    this.events.emit({ ...ctx, type: 'card.assignee.removed', data: { cardId, userId } });
+    const removed = await this.prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
+    if (removed.count > 0) {
+      await this.bumpVersion(cardId);
+      this.events.emit({ ...ctx, type: 'card.assignee.removed', data: { cardId, userId } });
+    }
     return this.listAssignees(cardId);
   }
 
@@ -75,20 +79,23 @@ export class CardExtrasService {
     if (!label || label.boardId !== ctx.boardId) {
       throw new BadRequestException('That label is not on this board');
     }
-    await this.prisma.cardLabel.upsert({
+    const existing = await this.prisma.cardLabel.findUnique({
       where: { cardId_labelId: { cardId, labelId } },
-      create: { cardId, labelId },
-      update: {},
     });
-    await this.bumpVersion(cardId);
-    this.events.emit({ ...ctx, type: 'card.label.added', data: { cardId, labelId } });
+    if (!existing) {
+      await this.prisma.cardLabel.create({ data: { cardId, labelId } });
+      await this.bumpVersion(cardId);
+      this.events.emit({ ...ctx, type: 'card.label.added', data: { cardId, labelId } });
+    }
     return this.listCardLabels(cardId);
   }
 
   async removeLabel(ctx: BoardEventContext, cardId: string, labelId: string) {
-    await this.prisma.cardLabel.deleteMany({ where: { cardId, labelId } });
-    await this.bumpVersion(cardId);
-    this.events.emit({ ...ctx, type: 'card.label.removed', data: { cardId, labelId } });
+    const removed = await this.prisma.cardLabel.deleteMany({ where: { cardId, labelId } });
+    if (removed.count > 0) {
+      await this.bumpVersion(cardId);
+      this.events.emit({ ...ctx, type: 'card.label.removed', data: { cardId, labelId } });
+    }
     return this.listCardLabels(cardId);
   }
 

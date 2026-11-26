@@ -74,7 +74,27 @@ export type MentionEvent = BoardEventContext & {
   data: { cardId: string; commentId: string; userIds: string[] };
 };
 
-export type DomainEvent = BoardEvent | WorkspaceEvent | MentionEvent;
+/** Someone was invited to a workspace by email (Step 11 notifies them if they have an account). */
+export type InvitationEvent = {
+  type: 'invitation.created';
+  workspaceId: string;
+  actorId: string;
+  data: { email: string; role: string; token: string };
+};
+
+/** A notification row was written; the realtime listener sends it to the user's room. */
+export type NotificationCreatedEvent = {
+  type: 'notification.created';
+  userId: string;
+  notification: { id: string; type: string; data: unknown; readAt: Date | null; createdAt: Date };
+};
+
+export type DomainEvent =
+  | BoardEvent
+  | WorkspaceEvent
+  | MentionEvent
+  | InvitationEvent
+  | NotificationCreatedEvent;
 
 export type BoardEventType = BoardEvent['type'];
 

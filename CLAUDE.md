@@ -156,6 +156,39 @@ user's role on a board), stop and tell the owner.
   `{ id, name, avatarUrl }` or `null` (archived before Step 10). A card whose `list.archived` is
   true stays hidden until its list is restored.
 
+### Notifications (Step 11)
+Your own notifications only (no board roles). Written by a background worker (BullMQ on Redis),
+so they appear a moment after the change.
+
+| Method & path | Body | Success |
+|---|---|---|
+| GET `/notifications?unread=true&cursor=&limit=20` | — | `{ items, nextCursor }`, newest first |
+| GET `/notifications/unread-count` | — | `{ count }` |
+| POST `/notifications/:id/read` | — | 200 · 404 if it isn't yours |
+| POST `/notifications/read-all` | — | `{ updated }` |
+| POST `/me/push-tokens` | `{ token, platform: "ios" \| "android" \| "web" }` | 200 · re-saving a token moves it to you |
+| DELETE `/me/push-tokens/:token` | — (URL-encode the token) | 200 |
+| GET `/me/notification-settings` | — | `{ push, mentionEmail, dueReminders }` (all default true) |
+| PATCH `/me/notification-settings` | any of those three booleans | the new settings |
+
+`notification` = `{ id, type, data, readAt, createdAt }`. `type` and when it's sent:
+| type | Sent to | `data` |
+|---|---|---|
+| `card.assigned` | the person assigned (not if you assigned yourself) | actor, board, card |
+| `comment.mentioned` | people @mentioned who can see the board | actor, board, card, `commentId`, `preview` |
+| `comment.created` | people assigned to the card (minus those mentioned in it) | same as above |
+| `workspace.invited` | the invited email, if it already has an account | actor, `workspaceId`/`workspaceName`, `invitationToken`, `role` |
+| `card.due` | assignees, once per due date, when it's due within 24 h (checked every 15 min) | board, card, `dueAt` (no actor) |
+
+`data` fields: `actorId`, `actorName`, `workspaceId`, `workspaceName`, `boardId`, `boardName`,
+`cardId`, `cardTitle`, `commentId`, `preview` (mentions already written as `@Name`, ≤140 chars),
+`invitationToken`, `role`, `dueAt`.
+- Nobody is notified about their own action. `dueReminders: false` turns off `card.due`;
+  `push: false` keeps notifications in the app only; `mentionEmail` emails mentions (logged to
+  the API console in dev).
+- Push messages carry `data: { type, boardId, cardId, token }` so a tap can open the card or invite.
+- Socket: every socket joins `user:<id>` on connect and gets `notification:new` (the notification).
+
 ### Moving (drag and drop)
 | Method & path | Body | Success |
 |---|---|---|
@@ -193,6 +226,7 @@ Rooms are lost when the socket reconnects: join again after every `connect`.
 | `board:event` | `{ type, boardId, actorId, data }` | Something changed on a board you joined |
 | `board:access-removed` | `{ boardId }` | You lost access (or the board/workspace was deleted). You're out of the room. Go to screen 31 |
 | `auth:expired` | — | Token expired; the server disconnects right after |
+| `notification:new` | notification (see Notifications) | A new notification for you (Step 11) |
 
 `board:event` types and their `data`:
 | type | data |

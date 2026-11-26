@@ -14,6 +14,7 @@ import { EventsModule } from './common/events/events.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
   @Module({
     imports: [
@@ -31,6 +32,7 @@ import { ActivityModule } from './modules/activity/activity.module';
       RealtimeModule,
       CommentsModule,
       ActivityModule,
+      NotificationsModule,
     ],
     providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
   })

@@ -14,4 +14,8 @@ export class MailService {
     async sendInvitation(email: string, workspaceName: string, link: string) {
     this.logger.log(`Invite to "${workspaceName}" for ${email}: ${link}`);
   }
+
+  async sendMention(email: string, who: string, cardTitle: string, preview: string) {
+    this.logger.log(`Mention email to ${email}: ${who} mentioned you in "${cardTitle}": ${preview}`);
+  }
 }

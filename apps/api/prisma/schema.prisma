@@ -22,6 +22,10 @@ model User {
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
   deletedAt            DateTime?           @map("deleted_at")
+  /// Notification settings (screen 22). In-app notifications are always kept.
+  notifyPush           Boolean             @default(true) @map("notify_push")
+  notifyMentionEmail   Boolean             @default(true) @map("notify_mention_email")
+  notifyDueReminders   Boolean             @default(true) @map("notify_due_reminders")
   refreshTokens        RefreshToken[]
   emailVerifications   EmailVerification[]
   passwordResets       PasswordReset[]
@@ -34,6 +38,8 @@ model User {
   cardAssignments      CardAssignee[]
   comments             Comment[]
   activities           Activity[]
+  notifications        Notification[]
+  pushTokens           PushToken[]
 
   @@map("users")
 }
@@ -206,17 +212,19 @@ model List {
 }
 
 model Card {
-  id          String    @id @default(uuid())
-  listId      String    @map("list_id")
-  title       String
-  description String?
-  dueAt       DateTime? @map("due_at")
-  position    Float
-  version     Int       @default(1)
-  createdById String    @map("created_by_id")
-  archivedAt  DateTime? @map("archived_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  listId         String    @map("list_id")
+  title          String
+  description    String?
+  dueAt          DateTime? @map("due_at")
+  position       Float
+  version        Int       @default(1)
+  /// The dueAt we last sent "due soon" reminders for. Changing dueAt makes a new reminder possible.
+  dueReminderFor DateTime? @map("due_reminder_for")
+  createdById    String    @map("created_by_id")
+  archivedAt     DateTime? @map("archived_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   list           List            @relation(fields: [listId], references: [id], onDelete: Cascade)
   createdBy      User            @relation("CardCreator", fields: [createdById], references: [id])
@@ -316,4 +324,34 @@ model Activity {
   @@index([boardId, createdAt])
   @@index([cardId, createdAt])
   @@map("activities")
+}
+
+/// Something a user should know about (screen 19). Written by the notifications worker.
+/// `data` keeps names as they were then (board, card, who did it).
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  data      Json
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+/// An Expo push token for one of the user's devices.
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
 }

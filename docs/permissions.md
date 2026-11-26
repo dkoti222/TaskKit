@@ -119,3 +119,18 @@ Uses your effective board role.
 - Viewers can't edit or delete comments they wrote before they became Viewers.
 - Only people with access to the board count as @mentioned.
 - People without access to the board get 404 on all of these.
+
+
+# Notifications permissions
+
+Notifications, push tokens and notification settings belong to one user: you can only see and
+change your own. Someone else's notification id gets 404.
+
+Who gets notified (never the person who did the action, and only people who can still see the
+board):
+- **Assigned to a card**: the person assigned.
+- **@mentioned in a comment**: each mentioned person with access to the board.
+- **New comment on a card**: everyone assigned to it, except people the comment mentions.
+- **Invited to a workspace**: the invited email, if it already has a TaskKit account.
+- **Card due within 24 hours**: its assignees, once per due date, unless they turned due
+  reminders off.

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUnreadCount } from '@/hooks/use-notifications';
 import { colors, fonts } from '@/theme';
 
-// Bottom tabs from the design. Search is added in Step 13.
+// Bottom tabs from the design: Home, Search, Alerts, Profile.
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const unread = useUnreadCount().data ?? 0;
@@ -33,6 +33,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ focused }) => <TabIcon name="search" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="alerts"
         options={{
           title: 'Alerts',
@@ -57,6 +64,12 @@ export default function TabsLayout() {
   );
 }
 
-function TabIcon({ name, focused }: { name: 'grid' | 'bell' | 'user'; focused: boolean }) {
+function TabIcon({
+  name,
+  focused,
+}: {
+  name: 'grid' | 'search' | 'bell' | 'user';
+  focused: boolean;
+}) {
   return <Feather name={name} size={22} color={focused ? colors.primary : colors.muted} />;
 }

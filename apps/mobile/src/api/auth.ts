@@ -1,4 +1,5 @@
 import { unregisterPush } from '@/notifications/push';
+import { useRecentSearches } from '@/store/recent-searches';
 import { useSession } from '@/store/session';
 import { api } from './client';
 import type { AuthResponse, MessageResponse } from './types';
@@ -40,6 +41,8 @@ export async function logOut() {
   const { refreshToken, signOut } = useSession.getState();
   // Stop push notifications to this phone first, while we still have a valid session.
   await unregisterPush();
+  // Recent searches belong to this person, not the phone.
+  useRecentSearches.getState().clear();
   if (refreshToken) {
     try {
       await api.post<MessageResponse>('/auth/logout', { refreshToken }, { timeout: 5_000 });

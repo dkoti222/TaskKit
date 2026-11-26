@@ -11,6 +11,7 @@ import { queryClient } from '@/api/query-client';
 import { startPush } from '@/notifications/push';
 import { startRealtime } from '@/realtime/socket';
 import { usePendingInvite } from '@/store/pending-invite';
+import { useRecentSearches } from '@/store/recent-searches';
 import { useSession } from '@/store/session';
 import { colors, fontAssets } from '@/theme';
 
@@ -25,6 +26,7 @@ export default function RootLayout() {
   useEffect(() => {
     void hydrate();
     void usePendingInvite.getState().hydrate();
+    void useRecentSearches.getState().hydrate();
     // Live board updates: connects while logged in (src/realtime/socket.ts).
     startRealtime();
     // Push notifications: registers after login, opens the card when one is tapped.

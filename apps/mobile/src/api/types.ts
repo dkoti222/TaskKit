@@ -297,3 +297,27 @@ export type Attachment = {
 };
 
 export type UploadTarget = { url: string; method: 'PUT'; headers: Record<string, string> };
+
+// ---------- Step 13: search ----------
+
+/** Text in pieces; `match` pieces are what the search found (shown highlighted). */
+export type Highlighted = { text: string; match: boolean }[];
+
+export type SearchResult = {
+  id: string;
+  title: string;
+  titleParts: Highlighted;
+  /** A bit of the description around the match, or null. */
+  snippetParts: Highlighted | null;
+  dueAt: string | null;
+  list: { id: string; name: string };
+  board: { id: string; name: string; color: string };
+};
+
+export type SearchParams = {
+  q?: string;
+  boardId?: string;
+  labelId?: string;
+  assigneeId?: string;
+  due?: 'overdue' | 'week';
+};

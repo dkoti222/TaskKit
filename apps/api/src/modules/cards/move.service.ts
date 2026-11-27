@@ -1,11 +1,12 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { BoardAccessService } from '../boards/board-access.service';
+import { limitReached, versionConflict } from '../../common/errors/api-errors';
+import { LIMITS } from '../../common/limits';
 import { PrismaService } from '../../prisma/prisma.service';
 import { POSITION_GAP, positionAt } from '../../common/utils/position';
 import { MoveCardDto } from './dto/move-card.dto';
@@ -55,15 +56,24 @@ export class MoveService {
       }
     }
     let fromListId = '';
+    let replayed = false;
     const moved = await this.prisma.$transaction(async (tx) => {
       // 1. The card must exist, and the app must have its latest version
       const card = await tx.card.findUnique({
         where: { id: cardId },
-        select: { version: true, archivedAt: true, listId: true },
+        select: { version: true, archivedAt: true, listId: true, lastMoveId: true },
       });
       if (!card || card.archivedAt) throw new NotFoundException('Card not found');
       fromListId = card.listId;
-      if (card.version !== dto.version) throw new ConflictException(CONFLICT_MSG);
+      // A retry of a move that already happened: answer with the card as it is now.
+      if (dto.moveId && card.lastMoveId === dto.moveId) {
+        replayed = true;
+        return tx.card.findUniqueOrThrow({
+          where: { id: cardId },
+          select: { id: true, listId: true, position: true, version: true, list: { select: { boardId: true } } },
+        });
+      }
+      if (card.version !== dto.version) throw versionConflict(CONFLICT_MSG);
 
       // 2. The target list must be on the target board and not archived
       const list = await tx.list.findUnique({
@@ -81,6 +91,9 @@ export class MoveService {
         orderBy: { position: 'asc' },
         select: { id: true, position: true },
       });
+      if (card.listId !== dto.listId && siblings.length >= LIMITS.cardsPerList) {
+        throw limitReached(`A list can have up to ${LIMITS.cardsPerList} cards.`);
+      }
       const index = Math.min(dto.index, siblings.length);
       let position = positionAt(siblings, index);
 
@@ -101,9 +114,9 @@ export class MoveService {
       // 5. Save, but only if nobody changed the card in the meantime
       const result = await tx.card.updateMany({
         where: { id: cardId, version: dto.version },
-        data: { listId: dto.listId, position, version: { increment: 1 } },
+        data: { listId: dto.listId, position, version: { increment: 1 }, lastMoveId: dto.moveId ?? null },
       });
-      if (result.count === 0) throw new ConflictException(CONFLICT_MSG);
+      if (result.count === 0) throw versionConflict(CONFLICT_MSG);
 
       // 6. Another board: its labels don't exist there, and some people may not have access.
       if (crossBoard) {
@@ -119,6 +132,10 @@ export class MoveService {
       });
     });
 
+    if (replayed) {
+      const { list: replayedList, ...rest } = moved;
+      return { ...rest, boardId: replayedList.boardId };
+    }
     // After the transaction has committed, tell everyone else, on both boards if it changed board.
     const data = {
       cardId,

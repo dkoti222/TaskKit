@@ -61,11 +61,12 @@ export class WorkspacesController {
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles('OWNER', 'ADMIN')
   update(
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateWorkspaceDto,
     @Req() req: Request,
   ) {
-    return this.workspaces.update(id, dto, baseUrl(req));
+    return this.workspaces.update(user.id, id, dto, baseUrl(req));
   }
 
   /** Logo step 1: where to PUT the image (PNG, JPEG or WebP, up to 2 MB). */
@@ -84,15 +85,20 @@ export class WorkspacesController {
   @Put(':id/logo')
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles('OWNER', 'ADMIN')
-  setLogo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetLogoDto, @Req() req: Request) {
-    return this.workspaces.setLogo(id, dto.key, baseUrl(req));
+  setLogo(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetLogoDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaces.setLogo(user.id, id, dto.key, baseUrl(req));
   }
 
   @Delete(':id/logo')
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles('OWNER', 'ADMIN')
-  removeLogo(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-    return this.workspaces.removeLogo(id, baseUrl(req));
+  removeLogo(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.workspaces.removeLogo(user.id, id, baseUrl(req));
   }
 
   @Delete(':id')

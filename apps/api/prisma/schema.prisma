@@ -26,6 +26,10 @@ model User {
   notifyPush           Boolean             @default(true) @map("notify_push")
   notifyMentionEmail   Boolean             @default(true) @map("notify_mention_email")
   notifyDueReminders   Boolean             @default(true) @map("notify_due_reminders")
+  /// How long before a due date to remind (1–72 hours).
+  reminderHoursBefore  Int                 @default(24) @map("reminder_hours_before")
+  /// When the 30-day purge removed what was left of a deleted account's personal data.
+  purgedAt             DateTime?           @map("purged_at")
   refreshTokens        RefreshToken[]
   emailVerifications   EmailVerification[]
   passwordResets       PasswordReset[]
@@ -41,6 +45,8 @@ model User {
   notifications        Notification[]
   pushTokens           PushToken[]
   attachments          Attachment[]
+  auditLogs            AuditLog[]
+  dueReminders         DueReminder[]
 
   @@map("users")
 }
@@ -116,6 +122,7 @@ model Workspace {
   updatedAt              DateTime     @updatedAt @map("updated_at")
   invitations            Invitation[]
   boards                 Board[]
+  auditLogs              AuditLog[]
 
   createdBy User              @relation("WorkspaceCreator", fields: [createdById], references: [id])
   members   WorkspaceMember[]
@@ -221,19 +228,20 @@ model List {
 }
 
 model Card {
-  id             String    @id @default(uuid())
-  listId         String    @map("list_id")
-  title          String
-  description    String?
-  dueAt          DateTime? @map("due_at")
-  position       Float
-  version        Int       @default(1)
-  /// The dueAt we last sent "due soon" reminders for. Changing dueAt makes a new reminder possible.
-  dueReminderFor DateTime? @map("due_reminder_for")
-  createdById    String    @map("created_by_id")
-  archivedAt     DateTime? @map("archived_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  listId      String    @map("list_id")
+  title       String
+  description String?
+  dueAt       DateTime? @map("due_at")
+  position    Float
+  version     Int       @default(1)
+  /// The client-made id of the last move that changed this card, so a retried move (e.g. sent
+  /// again after being offline) is recognised instead of failing with 409.
+  lastMoveId  String?   @map("last_move_id")
+  createdById String    @map("created_by_id")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   list           List                     @relation(fields: [listId], references: [id], onDelete: Cascade)
   createdBy      User                     @relation("CardCreator", fields: [createdById], references: [id])
@@ -243,6 +251,7 @@ model Card {
   comments       Comment[]
   activities     Activity[]
   attachments    Attachment[]
+  dueReminders   DueReminder[]
   /// Full-text search (Step 13): title (weight A) + description (weight B), kept up to date by
   /// Postgres itself (a GENERATED column, see the cards_search migration). Never written by us.
   search         Unsupported("tsvector")? @default(dbgenerated("(setweight(to_tsvector('english'::regconfig, COALESCE(title, ''::text)), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\"))"))
@@ -389,4 +398,37 @@ model Attachment {
 
   @@index([cardId, createdAt])
   @@map("attachments")
+}
+
+/// Who changed what in a workspace (PDF data model: audit_logs). Owner and Admins can read it.
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  actorId     String   @map("actor_id")
+  /// ROLE_CHANGED, MEMBER_REMOVED, MEMBER_LEFT, MEMBER_JOINED, OWNERSHIP_TRANSFERRED,
+  /// INVITATION_SENT, INVITATION_REVOKED, SETTINGS_CHANGED, LOGO_CHANGED
+  action      String
+  targetId    String?  @map("target_id")
+  payload     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id])
+
+  @@index([workspaceId, createdAt])
+  @@map("audit_logs")
+}
+
+/// One "due soon" reminder per person, card and due date. Changing the due date allows a new one.
+model DueReminder {
+  cardId String   @map("card_id")
+  userId String   @map("user_id")
+  dueAt  DateTime @map("due_at")
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId, dueAt])
+  @@map("due_reminders")
 }

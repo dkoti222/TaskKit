@@ -7,7 +7,24 @@ import { mentionTokenIds, parseMentions } from '../comments/mentions';
 import { NOTIFICATIONS_QUEUE, type NotificationJob } from './notifications.queue';
 import { NotificationsService, type NotificationData } from './notifications.service';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const MAX_REMINDER_HOURS = 72;
+
+/** "Thu, Nov 27, 6:00 PM" in the person's time zone (falls back to UTC for unknown zones). */
+function dueLabel(date: Date, timeZone: string) {
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  };
+  try {
+    return new Intl.DateTimeFormat('en-US', { ...options, timeZone }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(date) + ' UTC';
+  }
+}
 
 /**
  * The worker: takes jobs off the `notifications` queue (in the background, outside any HTTP
@@ -79,16 +96,17 @@ export class NotificationsProcessor extends WorkerHost {
   }
 
   /**
-   * Cards due within the next 24 hours whose assignees haven't been reminded about this due
-   * date yet. `dueReminderFor` remembers the due date we reminded about, so each due date gets
-   * one reminder, and moving the date makes a new one possible.
+   * Due reminders. Each assignee chooses how long before (reminderHoursBefore, 1–72 h), so this
+   * looks 72 hours ahead and reminds each person once their own window starts. A DueReminder row
+   * (card, person, due date) is written first, so nobody is reminded twice for the same due date;
+   * moving the due date allows a new reminder. The time is written in the person's time zone.
    */
   async checkDueDates() {
     const now = new Date();
     const cards = await this.prisma.card.findMany({
       where: {
         archivedAt: null,
-        dueAt: { gt: now, lte: new Date(now.getTime() + DAY_MS) },
+        dueAt: { gt: now, lte: new Date(now.getTime() + MAX_REMINDER_HOURS * HOUR_MS) },
         list: { archivedAt: null, board: { archivedAt: null } },
         assignees: { some: {} },
       },
@@ -96,40 +114,47 @@ export class NotificationsProcessor extends WorkerHost {
         id: true,
         title: true,
         dueAt: true,
-        dueReminderFor: true,
-        assignees: { select: { userId: true } },
+        assignees: {
+          select: {
+            user: {
+              select: { id: true, reminderHoursBefore: true, notifyDueReminders: true, timezone: true },
+            },
+          },
+        },
         list: { select: { board: { select: { id: true, name: true, workspaceId: true } } } },
       },
     });
 
     let sent = 0;
     for (const card of cards) {
-      if (card.dueReminderFor?.getTime() === card.dueAt!.getTime()) continue;
-      // Claim the reminder first, so two workers (or a retry) can't both send it.
-      const claimed = await this.prisma.card.updateMany({
-        where: { id: card.id, dueAt: card.dueAt, dueReminderFor: card.dueReminderFor },
-        data: { dueReminderFor: card.dueAt },
-      });
-      if (claimed.count === 0) continue;
-
+      const dueAt = card.dueAt!;
       const board = card.list.board;
-      const canSee = new Set((await this.access.peopleWithAccess(board.id)).map((p) => p.id));
-      await this.notifications.deliver(
-        card.assignees.map((a) => a.userId).filter((id) => canSee.has(id)),
-        'card.due',
-        {
+      let canSee: Set<string> | null = null;
+      for (const { user } of card.assignees) {
+        if (!user.notifyDueReminders) continue;
+        if (dueAt.getTime() - now.getTime() > user.reminderHoursBefore * HOUR_MS) continue; // not yet
+        // Claim it first: a second run (or worker) finds the row and skips.
+        try {
+          await this.prisma.dueReminder.create({ data: { cardId: card.id, userId: user.id, dueAt } });
+        } catch {
+          continue; // already reminded about this due date
+        }
+        canSee ??= new Set((await this.access.peopleWithAccess(board.id)).map((p) => p.id));
+        if (!canSee.has(user.id)) continue;
+        await this.notifications.deliver([user.id], 'card.due', {
           actorId: null,
           workspaceId: board.workspaceId,
           boardId: board.id,
           boardName: board.name,
           cardId: card.id,
           cardTitle: card.title,
-          dueAt: card.dueAt!.toISOString(),
-        },
-      );
-      sent++;
+          dueAt: dueAt.toISOString(),
+          dueLabel: dueLabel(dueAt, user.timezone),
+        });
+        sent++;
+      }
     }
-    if (sent) this.logger.log(`Due reminders sent for ${sent} card(s)`);
+    if (sent) this.logger.log(`Sent ${sent} due reminder(s)`);
   }
 
   /** Card, board and actor names (and the comment preview), or null if the card is gone. */

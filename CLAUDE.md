@@ -22,6 +22,8 @@ TaskKit/
 - Git: work on the `dev` branch. Commit messages use Conventional Commits with a scope:
   `feat(mobile): add login screen`, `fix(mobile): …`. Don't commit to `main`. Don't push unless asked.
 - Never commit `.env` files. Keep `.env.example` up to date.
+- Demo data: `npm run db:seed` in apps/api (`-- --many` adds a 10,000-card board). Accounts
+  owner@ / admin@ / member@ / viewer@demo.taskkit, password Test1234.
 - Tests (Step 14): `apps/api`: `npm test` (unit), `npm run test:e2e` (needs `.env.test` pointing at
   a `*_test` database; empties it), `npm run test:db:reset`. `apps/mobile`: `npm test`.
   CI runs both apps on every push (`.github/workflows/ci.yml`).
@@ -54,8 +56,18 @@ TaskKit/
 
 ## API (base: `/api/v1`)
 
-All errors return JSON like `{ "statusCode": 400, "message": "…" | ["…"], "error": "Bad Request" }`.
-`message` can be a string or an array of validation messages — show the first one.
+All errors return JSON `{ "statusCode": 400, "code": "VALIDATION_FAILED", "message": "…", "details"?: [{ "field", "message" }] }`.
+`message` is one sentence to show people. `code` is stable for the app to check: `VALIDATION_FAILED`
+(with `details`), `UNAUTHORIZED`, `FORBIDDEN`, `FORBIDDEN_ROLE`, `NOT_FOUND`, `CONFLICT`,
+`VERSION_CONFLICT`, `LIMIT_REACHED`, `RATE_LIMITED`, `PAYLOAD_TOO_LARGE`, `INTERNAL_ERROR`.
+
+**Limits** (400 `LIMIT_REACHED`): 10 workspaces owned per user · 50 members and 50 pending invites
+per workspace · 50 boards per workspace · 30 lists per board · 500 cards per list · 20 attachments
+per card.
+
+**Retries without duplicates:** POST `/lists/:id/cards` accepts an optional `id` (UUID made by the
+app; the same id again returns the card made the first time). PATCH `/cards/:id/move` accepts an
+optional `moveId` (UUID); repeating the last move's `moveId` returns the card instead of 409.
 
 ### Auth (public, no token)
 | Method & path | Body | Success |
@@ -121,6 +133,12 @@ user's role on a board), stop and tell the owner.
   → `{ key, upload: { url, method, headers } }`; PUT the bytes; then PUT `/workspaces/:id/logo`
   `{ key }` → the workspace. DELETE `/workspaces/:id/logo` removes it.
 - POST `/invitations/:token/decline` (the invited email only, like accept) → the link stops working.
+- POST `/workspaces/:id/invitations` also returns `link` (`taskkit://invite/<token>`): the only time
+  the plain token is available, so the inviter can share it.
+- GET `/workspaces/:id/audit-log?cursor=&limit=20` (Owner, Admin): `{ items: [{ id, action, createdAt,
+  actor, targetId, targetName, payload }], nextCursor }`. Actions: ROLE_CHANGED, MEMBER_REMOVED,
+  MEMBER_LEFT, MEMBER_JOINED, OWNERSHIP_TRANSFERRED, INVITATION_SENT, INVITATION_REVOKED,
+  SETTINGS_CHANGED, LOGO_CHANGED.
 
 ### Board content, lists and cards (Bearer token)
 | Method & path | Body | Who |
@@ -197,8 +215,8 @@ so they appear a moment after the change.
 | POST `/notifications/read-all` | — | `{ updated }` |
 | POST `/me/push-tokens` | `{ token, platform: "ios" \| "android" \| "web" }` | 200 · re-saving a token moves it to you |
 | DELETE `/me/push-tokens/:token` | — (URL-encode the token) | 200 |
-| GET `/me/notification-settings` | — | `{ push, mentionEmail, dueReminders }` (all default true) |
-| PATCH `/me/notification-settings` | any of those three booleans | the new settings |
+| GET `/me/notification-settings` | — | `{ push, mentionEmail, dueReminders, reminderHoursBefore }` (true, true, true, 24) |
+| PATCH `/me/notification-settings` | any of those; `reminderHoursBefore` 1–72 | the new settings |
 
 `notification` = `{ id, type, data, readAt, createdAt }`. `type` and when it's sent:
 | type | Sent to | `data` |
@@ -207,7 +225,7 @@ so they appear a moment after the change.
 | `comment.mentioned` | people @mentioned who can see the board | actor, board, card, `commentId`, `preview` |
 | `comment.created` | people assigned to the card (minus those mentioned in it) | same as above |
 | `workspace.invited` | the invited email, if it already has an account | actor, `workspaceId`/`workspaceName`, `invitationToken`, `role` |
-| `card.due` | assignees, once per due date, when it's due within 24 h (checked every 15 min) | board, card, `dueAt` (no actor) |
+| `card.due` | each assignee once per due date, `reminderHoursBefore` hours ahead (checked every 15 min) | board, card, `dueAt`, `dueLabel` (the time in their time zone; no actor) |
 
 `data` fields: `actorId`, `actorName`, `workspaceId`, `workspaceName`, `boardId`, `boardName`,
 `cardId`, `cardTitle`, `commentId`, `preview` (mentions already written as `@Name`, ≤140 chars),

@@ -13,6 +13,8 @@ import type { BoardEventContext } from '../../common/events/domain-events';
 import type { BoardRole } from '../boards/board-access.service';
 import { STORAGE_DRIVER, type StorageDriver } from '../storage/storage.driver';
 import type { UploadUrlDto } from './dto/upload-url.dto';
+import { LIMITS } from '../../common/limits';
+import { limitReached } from '../../common/errors/api-errors';
 
 /** How long a download link works. Short, so a forwarded link soon stops working. */
 const DOWNLOAD_SECONDS = 10 * 60;
@@ -35,6 +37,17 @@ export class AttachmentsService {
   ) {}
 
   async uploadUrl(ctx: BoardEventContext, cardId: string, dto: UploadUrlDto, baseUrl: string) {
+    // Pending uploads from the last hour count too, so many parallel uploads can't slip past.
+    const files = await this.prisma.attachment.count({
+      where: {
+        cardId,
+        deletedAt: null,
+        OR: [{ completedAt: { not: null } }, { createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } }],
+      },
+    });
+    if (files >= LIMITS.attachmentsPerCard) {
+      throw limitReached(`A card can have up to ${LIMITS.attachmentsPerCard} attachments.`);
+    }
     const id = randomUUID();
     // The stored name never comes from the user: no "../", no clashes. The extension is kept
     // only for people looking in the folder.

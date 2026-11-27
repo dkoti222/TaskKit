@@ -50,6 +50,8 @@ export class UsersService {
         data: { revokedAt: new Date() },
       }),
       this.prisma.workspaceMember.deleteMany({ where: { userId: id } }),
+      // No more pushes to this person's phones (PDF: push tokens go with the account).
+      this.prisma.pushToken.deleteMany({ where: { userId: id } }),
       this.prisma.user.update({
         where: { id },
         data: {

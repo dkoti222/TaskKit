@@ -1,5 +1,15 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { PageQueryDto } from '../../../common/utils/pagination';
 
 export class NotificationsQueryDto extends PageQueryDto {
@@ -33,4 +43,11 @@ export class NotificationSettingsDto {
   @IsOptional()
   @IsBoolean()
   dueReminders?: boolean;
+
+  /** How long before a due date to remind: 1–72 hours. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(72)
+  reminderHoursBefore?: number;
 }

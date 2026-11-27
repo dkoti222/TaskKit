@@ -22,6 +22,9 @@ npm run start:dev           # http://localhost:3000/api/v1, docs at /api/docs
 
 Without Redis, set `NOTIFICATIONS_ENABLED="false"` in `.env`; everything else works.
 
+Demo data: `npm run db:seed` (add `-- --many` for a 10,000-card board). Log in as
+`owner@demo.taskkit` / `Test1234` (also admin@, member@, viewer@).
+
 Mobile:
 
 ```sh

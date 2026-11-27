@@ -182,3 +182,6 @@ Uses your effective board role.
 - "Allow invite links" off: nobody can invite, and links already sent stop working.
 - Decline an invite: only the person it was sent to (same email), like accepting.
 - Sessions (`/me/sessions`): your own devices only. "Log out of other devices" keeps this one.
+- Audit log (`GET /workspaces/:id/audit-log`): Owner and Admin only (Members and Viewers get 403).
+- Limits (400 LIMIT_REACHED): 10 workspaces owned per person, 50 members, 50 pending invites and
+  50 boards per workspace, 30 lists per board, 500 cards per list, 20 attachments per card.

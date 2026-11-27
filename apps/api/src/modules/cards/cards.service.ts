@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { nextPosition } from '../../common/utils/position';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { LIMITS } from '../../common/limits';
+import { limitReached } from '../../common/errors/api-errors';
 import { DomainEvents } from '../../common/events/domain-events.service';
 import type { BoardEventContext } from '../../common/events/domain-events';
 
@@ -16,12 +18,25 @@ export class CardsService {
   ) {}
 
   async create(ctx: BoardEventContext, listId: string, dto: CreateCardDto) {
+    if (dto.id) {
+      const existing = await this.prisma.card.findUnique({ where: { id: dto.id } });
+      if (existing) {
+        // The same create sent again: answer with what the first one made.
+        if (existing.listId === listId && existing.createdById === ctx.actorId) return existing;
+        throw new ConflictException('That card id is already used');
+      }
+    }
+    const cards = await this.prisma.card.count({ where: { listId, archivedAt: null } });
+    if (cards >= LIMITS.cardsPerList) {
+      throw limitReached(`A list can have up to ${LIMITS.cardsPerList} cards.`);
+    }
     const last = await this.prisma.card.aggregate({
       where: { listId },
       _max: { position: true },
     });
     const card = await this.prisma.card.create({
       data: {
+        ...(dto.id ? { id: dto.id } : {}),
         listId,
         title: dto.title,
         description: dto.description,

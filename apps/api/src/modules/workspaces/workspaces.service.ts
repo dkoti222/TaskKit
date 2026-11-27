@@ -5,6 +5,9 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { MAX_LOGO_BYTES } from './dto/logo.dto';
 import { DomainEvents } from '../../common/events/domain-events.service';
+import { AuditService } from './audit.service';
+import { LIMITS } from '../../common/limits';
+import { limitReached } from '../../common/errors/api-errors';
 import { STORAGE_DRIVER, type StorageDriver } from '../storage/storage.driver';
 import type { Workspace } from '../../generated/prisma/client';
 
@@ -19,6 +22,7 @@ export class WorkspacesService {
     private readonly prisma: PrismaService,
     private readonly events: DomainEvents,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -46,6 +50,10 @@ export class WorkspacesService {
   }
 
   async create(userId: string, dto: CreateWorkspaceDto, baseUrl: string) {
+    const owned = await this.prisma.workspaceMember.count({ where: { userId, role: 'OWNER' } });
+    if (owned >= LIMITS.workspacesOwned) {
+      throw limitReached(`You can own up to ${LIMITS.workspacesOwned} workspaces.`);
+    }
     const workspace = await this.prisma.workspace.create({
       data: {
         name: dto.name,
@@ -110,10 +118,16 @@ export class WorkspacesService {
   }
 
   /** Name, description and the rules (membersCanCreateBoards, allowInviteLinks). */
-  async update(workspaceId: string, dto: UpdateWorkspaceDto, baseUrl: string) {
+  async update(actorId: string, workspaceId: string, dto: UpdateWorkspaceDto, baseUrl: string) {
     const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: dto,
+    });
+    await this.audit.record(workspaceId, actorId, 'SETTINGS_CHANGED', null, {
+      name: dto.name,
+      description: dto.description,
+      membersCanCreateBoards: dto.membersCanCreateBoards,
+      allowInviteLinks: dto.allowInviteLinks,
     });
     return this.present(workspace, baseUrl);
   }
@@ -131,7 +145,7 @@ export class WorkspacesService {
   }
 
   /** Step 2 of 2: use the uploaded image as the logo (the old one is deleted). */
-  async setLogo(workspaceId: string, key: string, baseUrl: string) {
+  async setLogo(actorId: string, workspaceId: string, key: string, baseUrl: string) {
     if (!key.startsWith(`workspaces/${workspaceId}/`)) {
       throw new BadRequestException('That image belongs to another workspace');
     }
@@ -150,10 +164,11 @@ export class WorkspacesService {
       data: { logoKey: key },
     });
     if (old.logoKey && old.logoKey !== key) await this.storage.remove(old.logoKey).catch(() => undefined);
+    await this.audit.record(workspaceId, actorId, 'LOGO_CHANGED', null, { removed: false });
     return this.present(workspace, baseUrl);
   }
 
-  async removeLogo(workspaceId: string, baseUrl: string) {
+  async removeLogo(actorId: string, workspaceId: string, baseUrl: string) {
     const old = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
       select: { logoKey: true },
@@ -163,6 +178,7 @@ export class WorkspacesService {
       data: { logoKey: null },
     });
     if (old.logoKey) await this.storage.remove(old.logoKey).catch(() => undefined);
+    await this.audit.record(workspaceId, actorId, 'LOGO_CHANGED', null, { removed: true });
     return this.present(workspace, baseUrl);
   }
 

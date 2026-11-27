@@ -5,6 +5,8 @@ import { WorkspacesService } from './workspaces.service';
 import { WorkspacesController } from './workspaces.controller';
 import { MembersService } from './members.service';
 import { MembersController } from './members.controller';
+import { AuditController } from './audit.controller';
+import { AuditService } from './audit.service';
 import { InvitationsService } from './invitations.service';
 import {
   InvitationsController,
@@ -18,7 +20,8 @@ import {
     MembersController,
     WorkspaceInvitationsController,
     InvitationsController,
+    AuditController,
   ],
-  providers: [WorkspacesService, MembersService, InvitationsService],
+  providers: [WorkspacesService, MembersService, InvitationsService, AuditService],
 })
 export class WorkspacesModule {}

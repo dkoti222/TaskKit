@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import type { WorkspaceMember } from '../../generated/prisma/client';
 import { DomainEvents } from '../../common/events/domain-events.service';
+import { AuditService } from './audit.service';
 
 const userFields = { id: true, name: true, email: true, avatarUrl: true } as const;
 
@@ -15,6 +16,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: DomainEvents,
+    private readonly audit: AuditService,
   ) {}
 
   /** A workspace role change or removal can change what someone sees on its boards. */
@@ -62,6 +64,7 @@ export class MembersService {
       include: { user: { select: userFields } },
     });
     this.memberChanged(actor.userId, workspaceId, userId, role);
+    await this.audit.record(workspaceId, actor.userId, 'ROLE_CHANGED', userId, { from: target.role, to: role });
     return {
       userId: updated.userId,
       name: updated.user.name,
@@ -78,6 +81,7 @@ export class MembersService {
       where: { workspaceId_userId: { workspaceId, userId } },
     });
     this.memberChanged(actor.userId, workspaceId, userId, null);
+    await this.audit.record(workspaceId, actor.userId, 'MEMBER_REMOVED', userId, { role: target.role });
   }
 
     async transferOwnership(actor: WorkspaceMember, workspaceId: string, newOwnerId: string) {
@@ -98,6 +102,7 @@ export class MembersService {
     ]);
     this.memberChanged(actor.userId, workspaceId, newOwnerId, 'OWNER');
     this.memberChanged(actor.userId, workspaceId, actor.userId, 'ADMIN');
+    await this.audit.record(workspaceId, actor.userId, 'OWNERSHIP_TRANSFERRED', newOwnerId);
 
     return { message: 'Ownership transferred. You are now an Admin.' };
   }
@@ -110,6 +115,7 @@ export class MembersService {
       where: { workspaceId_userId: { workspaceId, userId: actor.userId } },
     });
     this.memberChanged(actor.userId, workspaceId, actor.userId, null);
+    await this.audit.record(workspaceId, actor.userId, 'MEMBER_LEFT', actor.userId, { role: actor.role });
   }
 
   private async getTarget(workspaceId: string, userId: string) {

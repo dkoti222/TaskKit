@@ -44,10 +44,11 @@ export class WorkspaceInvitationsController {
   @Delete(':invitationId')
   @HttpCode(200)
   async revoke(
+    @CurrentMembership() actor: WorkspaceMember,
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('invitationId', ParseUUIDPipe) invitationId: string,
   ) {
-    await this.invitations.revoke(workspaceId, invitationId);
+    await this.invitations.revoke(actor.userId, workspaceId, invitationId);
     return { message: 'Invitation revoked' };
   }
 }

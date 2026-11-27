@@ -1,13 +1,13 @@
 import {
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Role, WORKSPACE_ROLES_KEY } from '../decorators/workspace-roles.decorator';
+import { forbiddenRole } from '../../../common/errors/api-errors';
 
 @Injectable()
 export class WorkspaceRoleGuard implements CanActivate {
@@ -37,7 +37,7 @@ export class WorkspaceRoleGuard implements CanActivate {
       ctx.getClass(),
     ]);
     if (allowed?.length && !allowed.includes(membership.role)) {
-      throw new ForbiddenException('Your role does not allow this action');
+      throw forbiddenRole('Your role does not allow this action');
     }
 
     req.membership = membership;

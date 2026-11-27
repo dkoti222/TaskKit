@@ -29,9 +29,17 @@ export type NotificationData = {
   invitationToken?: string;
   role?: string;
   dueAt?: string;
+  /** card.due: the due time written in the person's time zone ("Thu, Nov 27, 6:00 PM"). */
+  dueLabel?: string;
 };
 
-export type Settings = { push: boolean; mentionEmail: boolean; dueReminders: boolean };
+export type Settings = {
+  push: boolean;
+  mentionEmail: boolean;
+  dueReminders: boolean;
+  /** How long before a due date to remind (1–72 hours). */
+  reminderHoursBefore: number;
+};
 
 @Injectable()
 export class NotificationsService {
@@ -140,9 +148,19 @@ export class NotificationsService {
   async getSettings(userId: string): Promise<Settings> {
     const u = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { notifyPush: true, notifyMentionEmail: true, notifyDueReminders: true },
+      select: {
+        notifyPush: true,
+        notifyMentionEmail: true,
+        notifyDueReminders: true,
+        reminderHoursBefore: true,
+      },
     });
-    return { push: u.notifyPush, mentionEmail: u.notifyMentionEmail, dueReminders: u.notifyDueReminders };
+    return {
+      push: u.notifyPush,
+      mentionEmail: u.notifyMentionEmail,
+      dueReminders: u.notifyDueReminders,
+      reminderHoursBefore: u.reminderHoursBefore,
+    };
   }
 
   async updateSettings(userId: string, patch: Partial<Settings>) {
@@ -152,6 +170,7 @@ export class NotificationsService {
         notifyPush: patch.push,
         notifyMentionEmail: patch.mentionEmail,
         notifyDueReminders: patch.dueReminders,
+        reminderHoursBefore: patch.reminderHoursBefore,
       },
     });
     return this.getSettings(userId);
@@ -172,6 +191,9 @@ export function pushText(type: NotificationType, d: NotificationData): { title: 
     case 'workspace.invited':
       return { title: `${who} invited you to ${d.workspaceName ?? 'a workspace'}`, body: 'Open TaskKit to accept.' };
     case 'card.due':
-      return { title: `${card} is due soon`, body: d.boardName ?? '' };
+      return {
+        title: d.dueLabel ? `${card} is due ${d.dueLabel}` : `${card} is due soon`,
+        body: d.boardName ?? '',
+      };
   }
 }

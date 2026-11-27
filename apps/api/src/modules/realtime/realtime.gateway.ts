@@ -14,6 +14,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { isUUID } from 'class-validator';
 import type { Server, Socket } from 'socket.io';
 import { BoardAccessService } from '../boards/board-access.service';
+import { corsOrigins } from '../../common/env.validation';
 
 /** What we keep on each socket after it has logged in. */
 export type SocketData = { userId: string; expiryTimer?: NodeJS.Timeout };
@@ -37,7 +38,16 @@ export const userRoom = (userId: string) => `user:${userId}`;
  * Sending events to the rooms is done by RealtimeListener.
  */
 @SkipThrottle()
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    // Same rule as HTTP: CORS_ORIGINS if set, otherwise any origin. Read per connection, so the
+    // value from .env is in place by then.
+    origin: (origin: string | undefined, callback: (err: Error | null, ok?: boolean) => void) => {
+      const allowed = corsOrigins();
+      callback(null, !allowed || !origin || allowed.includes(origin));
+    },
+  },
+})
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RealtimeGateway.name);
 

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { nextPosition, POSITION_GAP } from '../../common/utils/position';
 import type { BoardAccess } from '../boards/board-access.service';
+import { LIMITS } from '../../common/limits';
+import { limitReached } from '../../common/errors/api-errors';
 import { DomainEvents } from '../../common/events/domain-events.service';
 import type { BoardEventContext } from '../../common/events/domain-events';
 
@@ -63,6 +65,10 @@ export class ListsService {
   }
 
   async create(ctx: BoardEventContext, name: string) {
+    const lists = await this.prisma.list.count({ where: { boardId: ctx.boardId, archivedAt: null } });
+    if (lists >= LIMITS.listsPerBoard) {
+      throw limitReached(`A board can have up to ${LIMITS.listsPerBoard} lists.`);
+    }
     const last = await this.prisma.list.aggregate({
       where: { boardId: ctx.boardId },
       _max: { position: true },

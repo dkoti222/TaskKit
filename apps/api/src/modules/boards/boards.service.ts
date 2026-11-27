@@ -4,6 +4,8 @@ import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { Prisma, type WorkspaceMember } from '../../generated/prisma/client';
 import { DomainEvents } from '../../common/events/domain-events.service';
+import { LIMITS } from '../../common/limits';
+import { limitReached } from '../../common/errors/api-errors';
 import type { BoardEventContext } from '../../common/events/domain-events';
 
 @Injectable()
@@ -23,6 +25,9 @@ export class BoardsService {
       if (!rules.membersCanCreateBoards) {
         throw new ForbiddenException('Only the Owner and Admins can create boards in this workspace');
       }
+    }
+    if ((await this.prisma.board.count({ where: { workspaceId } })) >= LIMITS.boardsPerWorkspace) {
+      throw limitReached(`A workspace can have up to ${LIMITS.boardsPerWorkspace} boards (archived ones count).`);
     }
     const board = await this.prisma.board.create({
       data: {

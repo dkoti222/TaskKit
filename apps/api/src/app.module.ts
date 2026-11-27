@@ -1,5 +1,7 @@
   import { Module } from '@nestjs/common';
   import { ConditionalModule, ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { validateEnv } from './common/env.validation';
   import { HealthModule } from './health/health.module';
   import { PrismaModule } from './prisma/prisma.module';
   import { UsersModule } from './modules/users/users.module';
@@ -20,9 +22,10 @@ import { SearchModule } from './modules/search/search.module';
 
   @Module({
     imports: [
-      ConfigModule.forRoot({ isGlobal: true }),
+      ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
       ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
       PrismaModule,
+      ScheduleModule.forRoot(), // daily jobs (account purge)
       EventsModule,
       HealthModule,
       UsersModule,

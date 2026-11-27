@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { SessionsController } from './sessions.controller';
 import { TokenService } from './token.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersModule } from '../users/users.module';
@@ -21,7 +22,7 @@ import { MailModule } from '../mail/mail.module';
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, SessionsController],
   providers: [
     AuthService,
     TokenService,

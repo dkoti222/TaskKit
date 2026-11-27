@@ -68,4 +68,11 @@ export class InvitationsController {
   accept(@CurrentUser() user: AuthUser, @Param('token') token: string) {
     return this.invitations.accept(user, token);
   }
+
+  /** The invited person says no; the link stops working. */
+  @Post(':token/decline')
+  @HttpCode(200)
+  decline(@CurrentUser() user: AuthUser, @Param('token') token: string) {
+    return this.invitations.decline(user, token);
+  }
 }

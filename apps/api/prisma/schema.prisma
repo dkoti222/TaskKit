@@ -101,15 +101,21 @@ enum WorkspaceRole {
 }
 
 model Workspace {
-  id          String       @id @default(uuid())
-  name        String
-  description String?
-  logoUrl     String?      @map("logo_url")
-  createdById String       @map("created_by_id")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  invitations Invitation[]
-  boards      Board[]
+  id                     String       @id @default(uuid())
+  name                   String
+  description            String?
+  logoUrl                String?      @map("logo_url")
+  /// Where the uploaded logo is stored (storage driver key). The API returns a fresh signed
+  /// `logoUrl` from it; the old logoUrl column is unused.
+  logoKey                String?      @map("logo_key")
+  /// Workspace rules (screen 24).
+  membersCanCreateBoards Boolean      @default(true) @map("members_can_create_boards")
+  allowInviteLinks       Boolean      @default(true) @map("allow_invite_links")
+  createdById            String       @map("created_by_id")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+  invitations            Invitation[]
+  boards                 Board[]
 
   createdBy User              @relation("WorkspaceCreator", fields: [createdById], references: [id])
   members   WorkspaceMember[]
@@ -141,6 +147,8 @@ model Invitation {
   expiresAt   DateTime      @map("expires_at")
   acceptedAt  DateTime?     @map("accepted_at")
   revokedAt   DateTime?     @map("revoked_at")
+  /// The invited person said no (POST /invitations/:token/decline).
+  declinedAt  DateTime?     @map("declined_at")
   createdAt   DateTime      @default(now()) @map("created_at")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

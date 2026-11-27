@@ -30,6 +30,13 @@ export class InvitationsService {
     if (dto.role === 'ADMIN' && actor.role !== 'OWNER') {
       throw new ForbiddenException('Only the Owner can invite Admins');
     }
+    const rules = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { allowInviteLinks: true },
+    });
+    if (!rules.allowInviteLinks) {
+      throw new ForbiddenException('Invite links are turned off for this workspace');
+    }
 
     const alreadyMember = await this.prisma.workspaceMember.findFirst({
       where: { workspaceId, user: { email: dto.email } },
@@ -76,7 +83,13 @@ export class InvitationsService {
 
   listPending(workspaceId: string) {
     return this.prisma.invitation.findMany({
-      where: { workspaceId, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      where: {
+        workspaceId,
+        acceptedAt: null,
+        revokedAt: null,
+        declinedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -102,7 +115,7 @@ export class InvitationsService {
   async preview(user: AuthUser, token: string) {
     const invitation = await this.findValid(token);
     return {
-      workspace: invitation.workspace,
+      workspace: { id: invitation.workspace.id, name: invitation.workspace.name },
       role: invitation.role,
       invitedBy: invitation.invitedBy.name,
       email: invitation.email,
@@ -136,11 +149,24 @@ export class InvitationsService {
     };
   }
 
+  /** The invited person says no. Only the invited email can decline, like accepting. */
+  async decline(user: AuthUser, token: string) {
+    const invitation = await this.findValid(token);
+    if (invitation.email !== user.email) {
+      throw new ForbiddenException('This invite was sent to a different email address');
+    }
+    await this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { declinedAt: new Date() },
+    });
+    return { message: 'Invite declined' };
+  }
+
   private async findValid(token: string) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { tokenHash: sha256(token) },
       include: {
-        workspace: { select: { id: true, name: true } },
+        workspace: { select: { id: true, name: true, allowInviteLinks: true } },
         invitedBy: { select: { name: true } },
       },
     });
@@ -148,9 +174,13 @@ export class InvitationsService {
       !invitation ||
       invitation.revokedAt ||
       invitation.acceptedAt ||
+      invitation.declinedAt ||
       invitation.expiresAt < new Date()
     ) {
       throw new BadRequestException('This invite is invalid or has expired');
+    }
+    if (!invitation.workspace.allowInviteLinks) {
+      throw new BadRequestException('Invite links are turned off for this workspace');
     }
     return invitation;
   }

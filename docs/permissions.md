@@ -167,3 +167,18 @@ Uses your effective board role.
 
 - Workspace activity (`GET /workspaces/:id/activity`): any workspace member, and only entries
   from boards they can see (same rules as search). Outsiders get 404.
+
+
+# Later additions (2026-11-27)
+
+| Action                                              | Owner | Admin | Member | Viewer |
+|-----------------------------------------------------|:-----:|:-----:|:------:|:------:|
+| Change the workspace logo and rules                 |  ✅   |  ✅   |   ❌   |   ❌   |
+| Create boards when "Members can create boards" is off |  ✅   |  ✅   |   ❌   |   ❌   |
+| Sort a list's cards, archive all cards in a list    |  ✅   |  ✅   |   ✅   |   ❌   |
+
+- Move a card to another board: you must be Owner, Admin or Member on **both** boards, and
+  they must be in the same workspace.
+- "Allow invite links" off: nobody can invite, and links already sent stop working.
+- Decline an invite: only the person it was sent to (same email), like accepting.
+- Sessions (`/me/sessions`): your own devices only. "Log out of other devices" keeps this one.

@@ -139,6 +139,22 @@ export class ActivityListener implements OnModuleInit {
             archived: event.data.archived,
           },
         };
+      case 'list.sorted':
+        return {
+          data: {
+            listId: event.data.listId,
+            listName: await this.listName(event.data.listId),
+            by: event.data.by,
+          },
+        };
+      case 'list.cards.archived':
+        return {
+          data: {
+            listId: event.data.listId,
+            listName: await this.listName(event.data.listId),
+            count: event.data.count,
+          },
+        };
       case 'list.moved':
         return {
           data: { listId: event.data.listId, listName: await this.listName(event.data.listId) },

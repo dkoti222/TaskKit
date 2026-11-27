@@ -80,6 +80,15 @@ Rate limit: register, login, resend-code and forgot-password allow 5 requests pe
 
 `user` = `{ id, name, email, avatarUrl, timezone, emailVerifiedAt }`
 
+### Sessions (screen 22: active devices)
+| Method & path | Success |
+|---|---|
+| GET `/me/sessions` | `[{ id, deviceName, signedInAt, lastActiveAt, current }]`, one per signed-in device |
+| POST `/me/sessions/logout-others` | `{ message, count }`: every other device is signed out at its next refresh (≤ 15 min). 400 "Log in again…" for access tokens from before sessions existed |
+
+- The app sends `X-Device-Name: iPhone 15 · iOS 18.1` on every request; login and verify-email
+  store it with the session. Access tokens carry the session id as `sid`.
+
 ### Token rules for the app
 - Access token: JWT, expires in 15 minutes. Send it as a Bearer header on protected calls.
 - Refresh token: random string, 7 days. Store both tokens in SecureStore.
@@ -103,6 +112,15 @@ user's role on a board), stop and tell the owner.
 - GET `/workspaces/:workspaceId/boards` also returns `listCount`, `cardCount` (not archived) and
   `memberCount` (people added to the board) per board, for the tiles on screen 08.
 - DELETE `/workspaces/:id` (Owner only) deletes the workspace and everything in it.
+- Workspaces have `logoUrl` (a signed link, valid 1 hour, or null) and, on GET `/workspaces/:id`,
+  the rules `membersCanCreateBoards` and `allowInviteLinks` (both default true). PATCH
+  `/workspaces/:id` (Owner, Admin) accepts both rules. `membersCanCreateBoards: false` → Members
+  get 403 creating boards. `allowInviteLinks: false` → 403 creating invitations and 400 on
+  preview/accept/decline of links already sent.
+- Logo (Owner, Admin): POST `/workspaces/:id/logo/upload-url` `{ mimeType: image/png|jpeg|webp, size ≤ 2 MB }`
+  → `{ key, upload: { url, method, headers } }`; PUT the bytes; then PUT `/workspaces/:id/logo`
+  `{ key }` → the workspace. DELETE `/workspaces/:id/logo` removes it.
+- POST `/invitations/:token/decline` (the invited email only, like accept) → the link stops working.
 
 ### Board content, lists and cards (Bearer token)
 | Method & path | Body | Who |
@@ -111,6 +129,8 @@ user's role on a board), stop and tell the owner.
 | POST `/boards/:boardId/lists` | `{ name }` | Owner, Admin, Member |
 | PATCH `/lists/:listId` | `{ name }` | Owner, Admin, Member |
 | archive / restore a list | see `lists.controller.ts` | Owner, Admin, Member |
+| POST `/lists/:listId/sort` | `{ by: "dueAt" \| "title" \| "newest" \| "oldest" }` | Owner, Admin, Member · reorders the cards once (due date: soonest first, none last) |
+| POST `/lists/:listId/archive-cards` | — | Owner, Admin, Member · archives every card in the list → `{ count }` |
 | POST `/lists/:listId/cards` | `{ title, … }` see `create-card.dto.ts` | Owner, Admin, Member |
 | GET `/cards/:cardId` | — | anyone with access · full card detail |
 | PATCH `/cards/:cardId` | see `update-card.dto.ts` | Owner, Admin, Member |
@@ -240,6 +260,10 @@ GET `/workspaces/:workspaceId/search?q=&boardId=&labelId=&assigneeId=&due=overdu
 | PATCH `/cards/:cardId/move` | `{ listId, index, version }` | 200 `{ id, listId, position, version }` |
 | PATCH `/lists/:listId/move` | `{ index }` | 200 `{ id, position }` |
 
+- `listId` may be on **another board of the same workspace** if you're Owner, Admin or Member
+  there (403 otherwise). The card then loses its labels and any assignee who can't edit that
+  board; the response includes `boardId`, and `card.moved` goes to both boards' rooms with
+  `fromBoardId` / `toBoardId`.
 - `index` is where the item was dropped among the **other** items (0 = top). The server works out
   `position`; the app never sends positions. An index past the end means "at the end".
 - `version` is the card's current version from the last fetch. Every card change bumps it.
@@ -290,6 +314,8 @@ Rooms are lost when the socket reconnects: join again after every `connect`.
 | `comment.created` / `comment.updated` / `comment.deleted` | `{ cardId, commentId }` |
 | `card.attachment.added` / `card.attachment.removed` | `{ cardId, attachmentId, fileName }` |
 | `board.created` | `{ name }` |
+| `list.sorted` | `{ listId, by }` |
+| `list.cards.archived` | `{ listId, count }` |
 | `board.updated` | `{ changes }` (fields from PATCH, or `{ archived }`) |
 | `board.member.changed` | `{ userId, role }` (role `null` = removed from the board) |
 | `workspace.member.changed` | `{ userId, role }` (role `null` = left or removed). Sent to every board room of that workspace; roles may have changed |

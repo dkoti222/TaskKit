@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { nextPosition } from '../../common/utils/position';
+import { nextPosition, POSITION_GAP } from '../../common/utils/position';
 import type { BoardAccess } from '../boards/board-access.service';
 import { DomainEvents } from '../../common/events/domain-events.service';
 import type { BoardEventContext } from '../../common/events/domain-events';
@@ -87,5 +87,45 @@ export class ListsService {
     });
     this.events.emit({ ...ctx, type: 'list.archived', data: { listId, archived } });
     return list;
+  }
+
+  /**
+   * Screen 25 "Sort cards": puts the list's cards in a new order once, by renumbering their
+   * positions (1000, 2000, …). Dragging afterwards works as usual ("Manual" again).
+   * Due date: soonest first, cards without one last.
+   */
+  async sortCards(ctx: BoardEventContext, listId: string, by: 'dueAt' | 'title' | 'newest' | 'oldest') {
+    const orderBy =
+      by === 'title'
+        ? [{ title: 'asc' as const }]
+        : by === 'newest'
+          ? [{ createdAt: 'desc' as const }]
+          : by === 'oldest'
+            ? [{ createdAt: 'asc' as const }]
+            : [{ dueAt: { sort: 'asc' as const, nulls: 'last' as const } }, { position: 'asc' as const }];
+    const cards = await this.prisma.card.findMany({
+      where: { listId, archivedAt: null },
+      orderBy,
+      select: { id: true },
+    });
+    await this.prisma.$transaction(
+      cards.map((c, i) =>
+        this.prisma.card.update({ where: { id: c.id }, data: { position: (i + 1) * POSITION_GAP } }),
+      ),
+    );
+    this.events.emit({ ...ctx, type: 'list.sorted', data: { listId, by } });
+    return { count: cards.length };
+  }
+
+  /** Screen 25 "Archive all cards in list": the list stays, its cards go to Archived items. */
+  async archiveAllCards(ctx: BoardEventContext, listId: string) {
+    const result = await this.prisma.card.updateMany({
+      where: { listId, archivedAt: null },
+      data: { archivedAt: new Date(), version: { increment: 1 } },
+    });
+    if (result.count) {
+      this.events.emit({ ...ctx, type: 'list.cards.archived', data: { listId, count: result.count } });
+    }
+    return { count: result.count };
   }
 }

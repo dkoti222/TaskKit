@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MailModule } from '../mail/mail.module';
+import { StorageModule } from '../storage/storage.module';
 import { WorkspacesService } from './workspaces.service';
 import { WorkspacesController } from './workspaces.controller';
 import { MembersService } from './members.service';
@@ -11,7 +12,7 @@ import {
 } from './invitations.controller';
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, StorageModule], // StorageModule: workspace logos
   controllers: [
     WorkspacesController,
     MembersController,

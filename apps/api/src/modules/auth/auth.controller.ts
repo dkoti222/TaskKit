@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { RegisterDto } from './dto/register.dto';
@@ -25,8 +25,9 @@ export class AuthController {
 
   @Post('verify-email')
   @HttpCode(200)
-  verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.auth.verifyEmail(dto);
+  // X-Device-Name ("iPhone 15 · iOS 18") names the session in Profile → Active devices.
+  verifyEmail(@Body() dto: VerifyEmailDto, @Headers('x-device-name') device?: string) {
+    return this.auth.verifyEmail(dto, device);
   }
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('resend-code')
@@ -37,8 +38,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  login(@Body() dto: LoginDto, @Headers('x-device-name') device?: string) {
+    return this.auth.login(dto, device);
   }
 
   @Post('refresh')

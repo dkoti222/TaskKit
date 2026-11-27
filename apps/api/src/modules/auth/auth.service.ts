@@ -59,7 +59,7 @@ export class AuthService {
   }
 
   // ---------- Verify email ----------
-  async verifyEmail(dto: VerifyEmailDto) {
+  async verifyEmail(dto: VerifyEmailDto, deviceName?: string) {
     const user = await this.users.findByEmail(dto.email);
     if (!user) throw new BadRequestException('Invalid or expired code');
     if (user.emailVerifiedAt) throw new BadRequestException('Email is already verified');
@@ -94,12 +94,12 @@ export class AuthService {
       }),
     ]);
 
-    const tokens = await this.tokens.issueTokens(verifiedUser);
+    const tokens = await this.tokens.issueTokens(verifiedUser, undefined, deviceName);
     return { ...tokens, user: toPublicUser(verifiedUser) };
   }
 
   // ---------- Login ----------
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, deviceName?: string) {
     const user = await this.users.findByEmail(dto.email);
     if (!user || user.deletedAt || !(await argon2.verify(user.passwordHash, dto.password))) {
       throw new UnauthorizedException('Invalid email or password');
@@ -108,7 +108,7 @@ export class AuthService {
       throw new ForbiddenException('Verify your email before logging in');
     }
 
-    const tokens = await this.tokens.issueTokens(user);
+    const tokens = await this.tokens.issueTokens(user, undefined, deviceName);
     return { ...tokens, user: toPublicUser(user) };
   }
 

@@ -8,8 +8,13 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { baseUrl } from '../../common/utils/base-url';
+import { LogoUploadDto, SetLogoDto } from './dto/logo.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { WorkspacesService } from './workspaces.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
@@ -33,25 +38,61 @@ export class WorkspacesController {
   ) {}
 
   @Post()
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateWorkspaceDto) {
-    return this.workspaces.create(user.id, dto);
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateWorkspaceDto, @Req() req: Request) {
+    return this.workspaces.create(user.id, dto, baseUrl(req));
   }
 
   @Get()
-  listMine(@CurrentUser() user: AuthUser) {
-    return this.workspaces.listMine(user.id);
+  listMine(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.workspaces.listMine(user.id, baseUrl(req));
   }
 
   @Get(':id')
-  getOne(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.workspaces.getOne(user.id, id);
+  getOne(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaces.getOne(user.id, id, baseUrl(req));
   }
 
+  /** Name, description, and the rules: membersCanCreateBoards, allowInviteLinks. */
   @Patch(':id')
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles('OWNER', 'ADMIN')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkspaceDto) {
-    return this.workspaces.update(id, dto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWorkspaceDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaces.update(id, dto, baseUrl(req));
+  }
+
+  /** Logo step 1: where to PUT the image (PNG, JPEG or WebP, up to 2 MB). */
+  @Post(':id/logo/upload-url')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER', 'ADMIN')
+  logoUploadUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LogoUploadDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaces.logoUploadUrl(id, dto.mimeType, dto.size, baseUrl(req));
+  }
+
+  /** Logo step 2: use the uploaded image. Returns the workspace. */
+  @Put(':id/logo')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER', 'ADMIN')
+  setLogo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetLogoDto, @Req() req: Request) {
+    return this.workspaces.setLogo(id, dto.key, baseUrl(req));
+  }
+
+  @Delete(':id/logo')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles('OWNER', 'ADMIN')
+  removeLogo(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.workspaces.removeLogo(id, baseUrl(req));
   }
 
   @Delete(':id')

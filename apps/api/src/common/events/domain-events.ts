@@ -26,12 +26,17 @@ export type BoardEvent = BoardEventContext &
           listId: string;
           position: number;
           version: number;
+          /** Only when the card changed board (sent to both boards' rooms). */
+          fromBoardId?: string;
+          toBoardId?: string;
         };
       }
     | { type: 'list.created'; data: { listId: string; name: string } }
     | { type: 'list.updated'; data: { listId: string; name: string } }
     | { type: 'list.archived'; data: { listId: string; archived: boolean } }
     | { type: 'list.moved'; data: { listId: string; position: number } }
+    | { type: 'list.sorted'; data: { listId: string; by: string } }
+    | { type: 'list.cards.archived'; data: { listId: string; count: number } }
     | { type: 'card.assignee.added' | 'card.assignee.removed'; data: { cardId: string; userId: string } }
     | { type: 'card.label.added' | 'card.label.removed'; data: { cardId: string; labelId: string } }
     | {
@@ -113,6 +118,8 @@ export const BOARD_EVENT_TYPES: BoardEventType[] = [
   'list.updated',
   'list.archived',
   'list.moved',
+  'list.sorted',
+  'list.cards.archived',
   'card.assignee.added',
   'card.assignee.removed',
   'card.label.added',

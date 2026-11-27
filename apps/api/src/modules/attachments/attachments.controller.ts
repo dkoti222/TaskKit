@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { baseUrl } from '../../common/utils/base-url';
 import { AttachmentsService } from './attachments.service';
 import { UploadUrlDto } from './dto/upload-url.dto';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
@@ -21,11 +22,6 @@ import { CurrentBoard } from '../boards/decorators/current-board.decorator';
 import type { BoardAccess } from '../boards/board-access.service';
 import type { BoardEventContext } from '../../common/events/domain-events';
 
-/**
- * "http://192.168.1.24:3000/api/v1": links for the local storage driver must point at the
- * address the phone used to reach us, so we build them from this request.
- */
-const baseUrl = (req: Request) => `${req.protocol}://${req.get('host')}/api/v1`;
 
 @ApiTags('attachments')
 @ApiBearerAuth()

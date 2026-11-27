@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ListsService } from './lists.service';
 import { CreateListDto } from './dto/create-list.dto';
+import { SortCardsDto } from './dto/sort-cards.dto';
 import { BoardRoleGuard } from '../boards/guards/board-role.guard';
 import { BoardRoles } from '../boards/decorators/board-roles.decorator';
 import { CurrentBoard } from '../boards/decorators/current-board.decorator';
@@ -63,6 +64,24 @@ export class ListsController {
   @HttpCode(200)
   archive(@CurrentActor() actor: BoardEventContext, @Param('listId', ParseUUIDPipe) listId: string) {
     return this.lists.setArchived(actor, listId, true);
+  }
+
+  /** Reorders the list's cards once: by due date, title, newest or oldest. */
+  @Post('sort')
+  @HttpCode(200)
+  sort(
+    @CurrentActor() actor: BoardEventContext,
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @Body() dto: SortCardsDto,
+  ) {
+    return this.lists.sortCards(actor, listId, dto.by);
+  }
+
+  /** Archives every card in the list (the list stays). */
+  @Post('archive-cards')
+  @HttpCode(200)
+  archiveCards(@CurrentActor() actor: BoardEventContext, @Param('listId', ParseUUIDPipe) listId: string) {
+    return this.lists.archiveAllCards(actor, listId);
   }
 
   @Post('restore')

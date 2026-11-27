@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
@@ -14,6 +14,16 @@ export class BoardsService {
   ) {}
 
   async create(member: WorkspaceMember, workspaceId: string, dto: CreateBoardDto) {
+    // Workspace rule (screen 24): Members may be limited to using boards, not creating them.
+    if (member.role === 'MEMBER') {
+      const rules = await this.prisma.workspace.findUniqueOrThrow({
+        where: { id: workspaceId },
+        select: { membersCanCreateBoards: true },
+      });
+      if (!rules.membersCanCreateBoards) {
+        throw new ForbiddenException('Only the Owner and Admins can create boards in this workspace');
+      }
+    }
     const board = await this.prisma.board.create({
       data: {
         workspaceId,

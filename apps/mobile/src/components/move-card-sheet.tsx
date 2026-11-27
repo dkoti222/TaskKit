@@ -1,58 +1,114 @@
 import Feather from '@expo/vector-icons/Feather';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { moveCard } from '@/api/cards';
+import { getErrorMessage } from '@/api/errors';
 import type { BoardList } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Sheet } from '@/components/sheet';
+import { useBoardContent } from '@/hooks/use-board-content';
+import { boardKeys, useBoards } from '@/hooks/use-boards';
+import { cardKeys } from '@/hooks/use-cards';
 import { useMoveCard } from '@/hooks/use-move';
+import { canEditCards } from '@/lib/roles';
+import { useRealtime } from '@/realtime/socket';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 /**
- * 26 · Move card: pick a list and Top/Bottom, then PATCH /cards/:id/move. The move is optimistic
- * (the sheet closes straight away); a refusal rolls back and is reported through `onError`.
- * The API only moves cards within the same board, so the board is shown but can't be changed.
+ * 26 · Move card: pick a board, a list and Top/Bottom, then PATCH /cards/:id/move.
+ * - Same board: optimistic (the sheet closes straight away); a refusal rolls back and is
+ *   reported through `onError`.
+ * - Another board of the workspace (where you're Owner, Admin or Member): waits for the API,
+ *   because the card loses its labels and people who can't use that board. `onMovedToBoard`
+ *   then takes over (the card now lives on the other board).
  */
 export function MoveCardSheet({
   visible,
   onClose,
   boardId,
   boardName,
+  workspaceId,
   lists,
   card,
   onError,
+  onMovedToBoard,
 }: {
   visible: boolean;
   onClose: () => void;
   boardId: string;
   boardName: string;
+  workspaceId?: string;
   lists: BoardList[];
   card: { id: string; title: string; version: number; listId: string };
   onError: (error: unknown) => void;
+  onMovedToBoard?: (boardId: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const move = useMoveCard(boardId);
-  const current = lists.find((l) => l.id === card.listId);
+  // Moves need a connection (screen 30): their position and version depend on others' changes.
+  const online = useRealtime((s) => s.online);
+  const [targetBoardId, setTargetBoardId] = useState(boardId);
+  const [pickingBoard, setPickingBoard] = useState(false);
   const [listId, setListId] = useState<string | null>(null);
   const [where, setWhere] = useState<'top' | 'bottom'>('top');
 
+  // Boards you can add cards to (the card's own board always first).
+  const boards = useBoards(workspaceId ?? '');
+  const boardChoices = (boards.data ?? []).filter((b) => b.id === boardId || canEditCards(b.role));
+  const crossBoard = targetBoardId !== boardId;
+  const otherContent = useBoardContent(crossBoard ? targetBoardId : '');
+  const targetLists = crossBoard ? (otherContent.data?.lists ?? []) : lists;
+  const targetBoardName = crossBoard
+    ? (boardChoices.find((b) => b.id === targetBoardId)?.name ?? '')
+    : boardName;
+  const current = lists.find((l) => l.id === card.listId);
+
   // Default to the first list the card isn't in (as in the design), or its own list.
-  const selectedId = listId ?? lists.find((l) => l.id !== card.listId)?.id ?? card.listId;
-  const target = lists.find((l) => l.id === selectedId);
+  const selectedId =
+    (listId && targetLists.some((l) => l.id === listId) ? listId : null) ??
+    targetLists.find((l) => l.id !== card.listId)?.id ??
+    targetLists[0]?.id ??
+    null;
+  const target = targetLists.find((l) => l.id === selectedId);
   const siblings = target?.cards.filter((c) => c.id !== card.id) ?? [];
   const index = where === 'top' ? 0 : siblings.length;
   // Moving to where it already is would be a no-op (and still bump the version).
   const currentIndex = target?.cards.findIndex((c) => c.id === card.id) ?? -1;
-  const noChange = selectedId === card.listId && currentIndex === index;
+  const noChange = !crossBoard && selectedId === card.listId && currentIndex === index;
+
+  const moveAway = useMutation({
+    mutationFn: () => moveCard(card.id, { listId: selectedId!, index, version: card.version }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: boardKeys.content(boardId) });
+      void queryClient.invalidateQueries({ queryKey: boardKeys.content(targetBoardId) });
+      void queryClient.invalidateQueries({ queryKey: cardKeys.detail(card.id) });
+    },
+  });
 
   const close = () => {
     setListId(null);
     setWhere('top');
+    setTargetBoardId(boardId);
+    setPickingBoard(false);
+    moveAway.reset();
     onClose();
   };
 
   const submit = () => {
     if (!target || noChange) return;
+    if (crossBoard) {
+      const to = targetBoardId;
+      moveAway.mutate(undefined, {
+        onSuccess: () => {
+          close();
+          onMovedToBoard?.(to);
+        },
+      });
+      return;
+    }
     move.mutate({ cardId: card.id, listId: target.id, index, version: card.version }, { onError });
     close();
   };
@@ -68,49 +124,95 @@ export function MoveCardSheet({
           <AppText variant="label" style={styles.label}>
             Board
           </AppText>
-          <View style={styles.select} accessibilityLabel={`Board ${boardName}`}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Board ${targetBoardName}. Change board`}
+            disabled={boardChoices.length < 2}
+            onPress={() => setPickingBoard(!pickingBoard)}
+            style={styles.select}>
             <Text style={styles.selectText} numberOfLines={1}>
-              {boardName}
+              {targetBoardName}
             </Text>
-            <Feather name="lock" size={14} color={colors.placeholder} />
-          </View>
-          <AppText variant="small">Cards can be moved between lists on this board.</AppText>
+            {boardChoices.length > 1 ? (
+              <Feather
+                name={pickingBoard ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.muted}
+              />
+            ) : null}
+          </Pressable>
+          {pickingBoard ? (
+            <View accessibilityRole="radiogroup" style={styles.options}>
+              {boardChoices.map((b) => {
+                const on = b.id === targetBoardId;
+                return (
+                  <Pressable
+                    key={b.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    onPress={() => {
+                      setTargetBoardId(b.id);
+                      setListId(null);
+                      setPickingBoard(false);
+                    }}
+                    style={[styles.option, on && styles.optionOn]}>
+                    <View style={[styles.boardDot, { backgroundColor: b.color }]} />
+                    <Text style={styles.optionText} numberOfLines={1}>
+                      {b.name}
+                    </Text>
+                    {b.id === boardId ? <Text style={styles.current}>current</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          {crossBoard ? (
+            <AppText variant="small">
+              Labels are removed (they belong to a board), and so are people who can’t edit that
+              board.
+            </AppText>
+          ) : null}
         </View>
 
         <View style={styles.field}>
           <AppText variant="label" style={styles.label}>
             List
           </AppText>
-          <View accessibilityRole="radiogroup" style={styles.options}>
-            {lists.map((list) => {
-              const on = list.id === selectedId;
-              return (
-                <Pressable
-                  key={list.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={
-                    list.id === card.listId ? `${list.name}, current list` : list.name
-                  }
-                  onPress={() => setListId(list.id)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    on && styles.optionOn,
-                    pressed && { opacity: 0.7 },
-                  ]}>
-                  <View style={[styles.radio, on && styles.radioOn]}>
-                    {on ? <View style={styles.radioDot} /> : null}
-                  </View>
-                  <Text
-                    style={[styles.optionText, on && { fontFamily: fonts.semibold }]}
-                    numberOfLines={1}>
-                    {list.name}
-                  </Text>
-                  {list.id === card.listId ? <Text style={styles.current}>current</Text> : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          {crossBoard && otherContent.isPending ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : !targetLists.length ? (
+            <AppText variant="small">That board has no lists yet.</AppText>
+          ) : (
+            <View accessibilityRole="radiogroup" style={styles.options}>
+              {targetLists.map((list) => {
+                const on = list.id === selectedId;
+                const isCurrent = !crossBoard && list.id === card.listId;
+                return (
+                  <Pressable
+                    key={list.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={isCurrent ? `${list.name}, current list` : list.name}
+                    onPress={() => setListId(list.id)}
+                    style={({ pressed }) => [
+                      styles.option,
+                      on && styles.optionOn,
+                      pressed && { opacity: 0.7 },
+                    ]}>
+                    <View style={[styles.radio, on && styles.radioOn]}>
+                      {on ? <View style={styles.radioDot} /> : null}
+                    </View>
+                    <Text
+                      style={[styles.optionText, on && { fontFamily: fonts.semibold }]}
+                      numberOfLines={1}>
+                      {list.name}
+                    </Text>
+                    {isCurrent ? <Text style={styles.current}>current</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={styles.positionRow}>
@@ -136,10 +238,22 @@ export function MoveCardSheet({
           </View>
         </View>
 
+        {moveAway.isError ? (
+          <AppText variant="small" style={{ color: colors.danger }}>
+            {getErrorMessage(moveAway.error)}
+          </AppText>
+        ) : null}
+
+        {!online ? (
+          <AppText variant="small">
+            Moving cards needs a connection. Try again when you’re online.
+          </AppText>
+        ) : null}
         <Button
           title={noChange ? 'Already here' : `Move to ${target?.name ?? ''}`}
           onPress={submit}
-          disabled={!target || noChange}
+          loading={moveAway.isPending}
+          disabled={!target || noChange || !online}
           style={styles.submit}
         />
       </ScrollView>
@@ -202,4 +316,5 @@ const styles = StyleSheet.create({
   segmentText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   segmentTextOn: { color: colors.surface, fontFamily: fonts.semibold },
   submit: { marginTop: spacing.sm },
+  boardDot: { width: 12, height: 12, borderRadius: 3 },
 });

@@ -66,7 +66,9 @@ export default function WorkspaceBoardsScreen() {
   }
 
   const ws = workspace.data;
-  const canCreate = canCreateBoard(ws?.role);
+  // Workspace rule (24): with "Members can create boards" off, only Owner and Admin can.
+  const canCreate =
+    canCreateBoard(ws?.role) && (ws?.role !== 'MEMBER' || ws?.membersCanCreateBoards !== false);
   const error = workspace.error ?? boards.error;
   const boardList = boards.data ?? [];
 

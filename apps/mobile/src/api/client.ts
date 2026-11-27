@@ -1,4 +1,6 @@
 import { AxiosHeaders, create, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 
 import { SESSION_EXPIRED, useSession } from '@/store/session';
 import type { TokenPair } from './types';
@@ -11,10 +13,19 @@ if (!baseURL) {
   );
 }
 
+/** "iPhone 15 · iOS 18.1": names this login in Profile → Active devices. */
+const deviceName =
+  Platform.OS === 'web'
+    ? 'Web browser'
+    : [
+        Device.modelName ?? (Platform.OS === 'ios' ? 'iPhone' : 'Android phone'),
+        `${Platform.OS === 'ios' ? 'iOS' : 'Android'} ${Device.osVersion ?? ''}`.trim(),
+      ].join(' · ');
+
 export const api = create({
   baseURL,
   timeout: 15_000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', 'X-Device-Name': deviceName },
 });
 
 // Bare instance with no interceptors, used only for /auth/refresh so it can't loop.

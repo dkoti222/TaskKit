@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+import { onlineManager, QueryClient } from '@tanstack/react-query';
 
 import { useSession } from '@/store/session';
 import { getErrorStatus } from './errors';
@@ -24,3 +25,12 @@ useSession.subscribe((state, prev) => {
     queryClient.clear();
   }
 });
+
+// Screen 30 · Offline: tell TanStack Query when the phone has no connection. Changes made
+// offline are then paused (not failed) and sent automatically when the connection is back;
+// usePendingChanges() shows how many are waiting.
+onlineManager.setEventListener((setOnline) =>
+  NetInfo.addEventListener((state) =>
+    setOnline(state.isConnected !== false && state.isInternetReachable !== false),
+  ),
+);

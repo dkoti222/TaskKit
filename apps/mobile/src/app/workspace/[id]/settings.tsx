@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -17,6 +18,7 @@ import {
   useDeleteWorkspace,
   useLeaveWorkspace,
   useUpdateWorkspace,
+  useWorkspaceLogo,
 } from '@/hooks/use-workspace-mutations';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { canManageWorkspace } from '@/lib/roles';
@@ -24,8 +26,8 @@ import { colors, fonts, radius, spacing } from '@/theme';
 
 // 24 · Workspace settings. Everyone can open it: Owner/Admin can rename, the Owner can transfer
 // ownership, and everyone but the Owner can leave.
-// Not built: logo and workspace rules toggles (no API).
-// The Owner can delete the workspace (typing its name to confirm).
+// Owner/Admin can also change the logo and the workspace rules (Members can create boards,
+// Allow invite links). The Owner can delete the workspace (typing its name to confirm).
 export default function WorkspaceSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workspace = useWorkspace(id);
@@ -33,6 +35,22 @@ export default function WorkspaceSettingsScreen() {
   const leave = useLeaveWorkspace(id);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const remove = useDeleteWorkspace(id);
+  const logo = useWorkspaceLogo(id);
+  // The rules save on tap, separately from the Save button.
+  const rules = useUpdateWorkspace(id);
+
+  const pickLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset) return;
+    const mimeType = asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
+    logo.mutate({ uri: asset.uri, mimeType });
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [typedName, setTypedName] = useState('');
 
@@ -96,7 +114,34 @@ export default function WorkspaceSettingsScreen() {
           ) : null}
 
           <View style={styles.card}>
-            <WorkspaceTile name={nameValue || ws!.name} seed={ws!.id} size={48} />
+            <View style={styles.logoRow}>
+              <WorkspaceTile
+                name={nameValue || ws!.name}
+                seed={ws!.id}
+                size={48}
+                logoUrl={ws!.logoUrl}
+              />
+              {canEdit ? (
+                <>
+                  <Button
+                    title={ws!.logoUrl ? 'Change logo' : 'Add logo'}
+                    variant="secondary"
+                    loading={logo.isPending}
+                    onPress={pickLogo}
+                    style={styles.logoButton}
+                  />
+                  {ws!.logoUrl && !logo.isPending ? (
+                    <Button
+                      title="Remove"
+                      variant="text"
+                      onPress={() => logo.mutate(null)}
+                      style={styles.logoButton}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+            <FormMessage message={logo.isError ? getErrorMessage(logo.error) : null} />
             <TextField
               label="Name"
               value={nameValue}
@@ -130,6 +175,43 @@ export default function WorkspaceSettingsScreen() {
             <AppText variant="small">{ws!.memberCount}</AppText>
             <Feather name="chevron-right" size={18} color={colors.muted} />
           </Pressable>
+
+          <View style={[styles.card, styles.rules]}>
+            {(
+              [
+                [
+                  'membersCanCreateBoards',
+                  'Members can create boards',
+                  'Off means only Owner and Admin can',
+                ],
+                ['allowInviteLinks', 'Allow invite links', 'Links expire after 7 days'],
+              ] as const
+            ).map(([key, title, detail], index) => {
+              const on = ws![key] !== false;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on, disabled: !canEdit }}
+                  disabled={!canEdit || rules.isPending}
+                  onPress={() => rules.mutate({ [key]: !on })}
+                  style={({ pressed }) => [
+                    styles.ruleRow,
+                    index > 0 && styles.ruleDivider,
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={styles.flexOne}>
+                    <AppText style={styles.ruleTitle}>{title}</AppText>
+                    <AppText variant="small">{detail}</AppText>
+                  </View>
+                  <View style={[styles.box, on && styles.boxOn, !canEdit && styles.boxOff]}>
+                    {on ? <Feather name="check" size={14} color={colors.surface} /> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+            <FormMessage message={rules.isError ? getErrorMessage(rules.error) : null} />
+          </View>
 
           <Pressable
             accessibilityRole="button"
@@ -282,6 +364,24 @@ function DangerRow({
 }
 
 const styles = StyleSheet.create({
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  logoButton: { minHeight: 44, height: 44, paddingHorizontal: spacing.lg },
+  rules: { paddingVertical: 0, gap: 0 },
+  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
+  ruleDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  ruleTitle: { fontSize: 15 },
+  flexOne: { flex: 1, gap: 2 },
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  boxOff: { opacity: 0.5 },
   deleteCard: { borderColor: colors.danger, gap: spacing.md },
   deleteTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.danger },
   flex: { flex: 1 },

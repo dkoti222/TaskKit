@@ -28,6 +28,12 @@ import { getErrorMessage } from '@/api/errors';
 import { patchCard, patchList, removeCard } from '@/lib/board-cache';
 import { boardKeys } from './use-boards';
 
+/**
+ * Every change to one card uses this mutation key, so screens can see which cards have changes
+ * still waiting to be sent (screen 30: offline, "Waiting to sync").
+ */
+export const cardChangeKey = (cardId: string) => ['card-change', cardId] as const;
+
 export const cardKeys = {
   all: ['cards'] as const,
   detail: (id: string) => [...cardKeys.all, id] as const,
@@ -159,6 +165,7 @@ export function useUpdateCard(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const cache = cardCache(queryClient, cardId, boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (body: CardUpdate) => updateCard(cardId, body),
     onSuccess: (card) => {
       const fields = {
@@ -180,6 +187,7 @@ export function useArchiveCard(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const contentKey = boardKeys.content(boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: () => archiveCard(cardId),
     onSuccess: (card) => {
       queryClient.setQueryData<BoardContent>(contentKey, (old) =>
@@ -200,6 +208,7 @@ export function useToggleAssignee(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const cache = cardCache(queryClient, cardId, boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: ({ person, on }: { person: CardPerson; on: boolean }) =>
       on ? addAssignee(cardId, person.id) : removeAssignee(cardId, person.id),
     onMutate: async ({ person, on }) => {
@@ -229,6 +238,7 @@ export function useToggleCardLabel(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const cache = cardCache(queryClient, cardId, boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: ({ label, on }: { label: Label; on: boolean }) =>
       on ? addCardLabel(cardId, label.id) : removeCardLabel(cardId, label.id),
     onMutate: async ({ label, on }) => {
@@ -274,6 +284,7 @@ export function useAddChecklistItem(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const cache = cardCache(queryClient, cardId, boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (text: string) => addChecklistItem(cardId, text),
     onSuccess: (item) => {
       let items: ChecklistItem[] = [];
@@ -307,6 +318,7 @@ export function useUpdateChecklistItem(cardId: string, boardId: string) {
     }
   };
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: ({ itemId, body }: { itemId: string; body: { text?: string; done?: boolean } }) =>
       updateChecklistItem(itemId, body),
     onMutate: async ({ itemId, body }) => {
@@ -330,6 +342,7 @@ export function useDeleteChecklistItem(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   const cache = cardCache(queryClient, cardId, boardId);
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (itemId: string) => deleteChecklistItem(itemId),
     onMutate: async (itemId) => {
       await cache.cancel();

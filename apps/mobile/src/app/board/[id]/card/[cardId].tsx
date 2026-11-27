@@ -490,9 +490,16 @@ function CardBody({
           onClose={() => setMoving(false)}
           boardId={boardId}
           boardName={boardName}
+          workspaceId={board?.workspaceId}
           lists={lists}
           card={{ id: card.id, title: card.title, version: summary.version, listId: card.list.id }}
           onError={showError}
+          onMovedToBoard={(newBoardId) =>
+            router.replace({
+              pathname: '/board/[id]/card/[cardId]',
+              params: { id: newBoardId, cardId: card.id },
+            })
+          }
         />
       ) : null}
 

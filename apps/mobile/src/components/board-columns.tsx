@@ -31,6 +31,7 @@ export function ListColumn({
   onAddCard,
   onMenu,
   filtered,
+  waitingCardIds,
 }: {
   list: BoardList;
   /** The cards to show (may be filtered). */
@@ -50,6 +51,8 @@ export function ListColumn({
   onAddCard?: () => void;
   onMenu?: () => void;
   filtered?: boolean;
+  /** Cards with changes waiting to be sent (offline). */
+  waitingCardIds?: Set<string>;
 }) {
   // DraggableFlatList wants its new order on the same frame the finger lifts, but our cache
   // update is async (onMutate). Keep the dropped order until `cards` changes (optimistic update
@@ -98,6 +101,7 @@ export function ListColumn({
               <CardFace
                 card={item}
                 active={isActive}
+                waiting={waitingCardIds?.has(item.id)}
                 onPress={onCardPress ? () => onCardPress(item) : undefined}
                 onLongPress={dragCards ? drag : undefined}
               />

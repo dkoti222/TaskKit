@@ -100,12 +100,15 @@ export function CardFace({
   onPress,
   onLongPress,
   active,
+  waiting,
 }: {
   card: CardSummary;
   onPress?: () => void;
   onLongPress?: () => void;
   /** Being dragged. */
   active?: boolean;
+  /** Has changes made offline, not sent yet (screen 30). */
+  waiting?: boolean;
 }) {
   const { checklist } = card;
   const comments = card.commentCount ?? 0;
@@ -136,6 +139,7 @@ export function CardFace({
       disabled={!onPress && !onLongPress}
       style={({ pressed }) => [
         styles.card,
+        waiting && styles.cardWaiting,
         active && styles.cardActive,
         pressed && !active && styles.pressed,
       ]}>
@@ -178,7 +182,13 @@ export function CardFace({
               <Text style={styles.metaText}>{files}</Text>
             </View>
           ) : null}
-          {!hasMeta ? <Text style={styles.noDue}>No due date</Text> : null}
+          {!hasMeta && !waiting ? <Text style={styles.noDue}>No due date</Text> : null}
+          {waiting ? (
+            <View style={styles.metaItem} accessibilityLabel="Waiting to sync">
+              <Feather name="clock" size={13} color="#B5561A" />
+              <Text style={[styles.metaText, styles.waitingText]}>Waiting to sync</Text>
+            </View>
+          ) : null}
         </View>
         {card.assignees.length ? <AvatarStack people={card.assignees} /> : null}
       </View>
@@ -223,6 +233,8 @@ export function Toast({
 }
 
 const styles = StyleSheet.create({
+  cardWaiting: { borderStyle: 'dashed', borderColor: '#E39A5E' },
+  waitingText: { color: '#B5561A' },
   label: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, maxWidth: 160 },
   labelLarge: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   labelText: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },

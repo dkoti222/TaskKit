@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/errors';
 import type { AppNotification } from '@/api/types';
+import { declineInvitation } from '@/api/workspaces';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { RealtimeBanner } from '@/components/realtime-banner';
@@ -140,7 +141,11 @@ export default function AlertsScreen() {
           <NotificationRow
             n={item}
             onPress={() => open(item)}
-            onDecline={() => markRead.mutate(item.id)}
+            onDecline={() => {
+              const token = item.data.invitationToken;
+              if (token) void declineInvitation(token).catch(() => undefined);
+              markRead.mutate(item.id);
+            }}
           />
         )}
         ListEmptyComponent={empty}

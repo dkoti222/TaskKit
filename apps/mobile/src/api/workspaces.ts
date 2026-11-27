@@ -7,6 +7,7 @@ import type {
   Member,
   MessageResponse,
   PendingInvitation,
+  UploadTarget,
   Workspace,
 } from './types';
 
@@ -30,7 +31,15 @@ export async function createWorkspace(body: { name: string; description?: string
 }
 
 /** Owner and Admin. Returns the workspace without `role` / `memberCount`. */
-export async function updateWorkspace(id: string, body: { name?: string; description?: string }) {
+export async function updateWorkspace(
+  id: string,
+  body: {
+    name?: string;
+    description?: string;
+    membersCanCreateBoards?: boolean;
+    allowInviteLinks?: boolean;
+  },
+) {
   const { data } = await api.patch<Omit<Workspace, 'role' | 'memberCount'>>(
     `/workspaces/${id}`,
     body,
@@ -118,5 +127,35 @@ export async function leaveWorkspace(workspaceId: string) {
  */
 export async function deleteWorkspace(workspaceId: string) {
   const { data } = await api.delete<MessageResponse>(`/workspaces/${workspaceId}`);
+  return data;
+}
+
+// ---------- Logo (screen 24) ----------
+
+export type LogoType = 'image/png' | 'image/jpeg' | 'image/webp';
+
+/** Step 1: where to PUT the image (Owner/Admin; PNG, JPEG or WebP up to 2 MB). */
+export async function requestLogoUpload(workspaceId: string, mimeType: LogoType, size: number) {
+  const { data } = await api.post<{ key: string; upload: UploadTarget }>(
+    `/workspaces/${workspaceId}/logo/upload-url`,
+    { mimeType, size },
+  );
+  return data;
+}
+
+/** Step 2: use the uploaded image as the logo. */
+export async function setWorkspaceLogo(workspaceId: string, key: string) {
+  const { data } = await api.put<Workspace>(`/workspaces/${workspaceId}/logo`, { key });
+  return data;
+}
+
+export async function removeWorkspaceLogo(workspaceId: string) {
+  const { data } = await api.delete<Workspace>(`/workspaces/${workspaceId}/logo`);
+  return data;
+}
+
+/** The invited person says no; the link stops working. */
+export async function declineInvitation(token: string) {
+  const { data } = await api.post<MessageResponse>(`/invitations/${token}/decline`);
   return data;
 }

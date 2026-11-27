@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { Role } from '@/api/types';
 import { initials, workspaceInitials } from '@/lib/format';
@@ -39,12 +39,24 @@ export function WorkspaceTile({
   name,
   seed,
   size = 44,
+  logoUrl,
 }: {
   name: string;
   /** Usually the workspace id; decides the colour. */
   seed: string;
   size?: number;
+  /** The uploaded logo; falls back to the coloured initials. */
+  logoUrl?: string | null;
 }) {
+  if (logoUrl) {
+    return (
+      <Image
+        source={{ uri: logoUrl }}
+        style={{ width: size, height: size, borderRadius: size * 0.25 }}
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
   return (
     <View
       style={[

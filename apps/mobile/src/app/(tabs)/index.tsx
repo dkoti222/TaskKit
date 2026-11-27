@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import type { Workspace } from '@/api/types';
+import { declineInvitation } from '@/api/workspaces';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { TextLink } from '@/components/misc';
@@ -99,8 +100,12 @@ export default function HomeScreen() {
             onView={() =>
               router.push({ pathname: '/invite/[token]', params: { token: pendingToken! } })
             }
-            // No decline API: forget the link on this phone; the invite expires on its own.
-            onDecline={() => void usePendingInvite.getState().clear()}
+            // Decline on the server (best effort), then forget the link on this phone.
+            onDecline={() =>
+              void declineInvitation(pendingToken!)
+                .catch(() => undefined)
+                .finally(() => void usePendingInvite.getState().clear())
+            }
           />
         ) : null}
 
@@ -182,7 +187,7 @@ function WorkspaceRow({ workspace }: { workspace: Workspace }) {
       accessibilityLabel={`${workspace.name}, ${plural(workspace.memberCount, 'member')}, you're ${workspace.role.toLowerCase()}`}
       onPress={() => router.push({ pathname: '/workspace/[id]', params: { id: workspace.id } })}
       style={({ pressed }) => [styles.card, styles.row, pressed && styles.pressed]}>
-      <WorkspaceTile name={workspace.name} seed={workspace.id} />
+      <WorkspaceTile name={workspace.name} seed={workspace.id} logoUrl={workspace.logoUrl} />
       <View style={styles.flex}>
         <AppText style={styles.wsName} numberOfLines={1}>
           {workspace.name}

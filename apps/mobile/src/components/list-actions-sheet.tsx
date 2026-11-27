@@ -8,14 +8,30 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { FormMessage } from '@/components/misc';
 import { Sheet, SheetDivider, SheetRow } from '@/components/sheet';
 import { TextField } from '@/components/text-field';
-import { useArchiveList, useRenameList } from '@/hooks/use-lists';
+import type { CardSort } from '@/api/lists';
+import {
+  useArchiveList,
+  useArchiveListCards,
+  useRenameList,
+  useSortCards,
+} from '@/hooks/use-lists';
 import { useMoveList } from '@/hooks/use-move';
 import { plural } from '@/lib/format';
 import { colors, fonts, spacing } from '@/theme';
 
-type View_ = 'menu' | 'rename' | 'move';
+type View_ = 'menu' | 'rename' | 'move' | 'sort';
 
-/** 25 · List actions: add card, rename, move to another position, archive (with 27 · Confirm). */
+const SORTS: { by: CardSort; label: string }[] = [
+  { by: 'dueAt', label: 'Due date (soonest first)' },
+  { by: 'title', label: 'Name (A to Z)' },
+  { by: 'newest', label: 'Newest first' },
+  { by: 'oldest', label: 'Oldest first' },
+];
+
+/**
+ * 25 · List actions: add card, rename, move to another position, sort the cards once, archive all
+ * its cards, archive the list (the archives with 27 · Confirm).
+ */
 export function ListActionsSheet({
   list,
   index,
@@ -40,6 +56,9 @@ export function ListActionsSheet({
   const rename = useRenameList(boardId);
   const archive = useArchiveList(boardId);
   const move = useMoveList(boardId);
+  const sort = useSortCards(boardId);
+  const archiveCards = useArchiveListCards(boardId);
+  const [confirmCards, setConfirmCards] = useState<BoardList | null>(null);
   const [view, setView] = useState<View_>('menu');
   const [name, setName] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -63,7 +82,7 @@ export function ListActionsSheet({
   return (
     <>
       <Sheet
-        visible={!!list && !confirm}
+        visible={!!list && !confirm && !confirmCards}
         onClose={close}
         dismissable={!rename.isPending}
         title={list?.name}
@@ -93,7 +112,20 @@ export function ListActionsSheet({
               disabled={total < 2}
               onPress={() => setView('move')}
             />
+            <SheetRow
+              icon="bar-chart-2"
+              label="Sort cards"
+              value="Manual"
+              disabled={list.cards.length < 2}
+              onPress={() => setView('sort')}
+            />
             <SheetDivider />
+            <SheetRow
+              icon="archive"
+              label="Archive all cards in list"
+              disabled={list.cards.length === 0}
+              onPress={() => setConfirmCards(list)}
+            />
             <SheetRow
               icon="archive"
               label="Archive list"
@@ -134,6 +166,27 @@ export function ListActionsSheet({
           </View>
         ) : null}
 
+        {list && view === 'sort' ? (
+          <ScrollView contentContainerStyle={styles.positions}>
+            <Text style={styles.sortNote}>
+              Puts the cards in this order once. You can still drag them afterwards.
+            </Text>
+            {SORTS.map((option) => (
+              <Pressable
+                key={option.by}
+                accessibilityRole="button"
+                onPress={() => {
+                  sort.mutate({ listId: list.id, by: option.by }, { onError });
+                  close();
+                }}
+                style={({ pressed }) => [styles.position, pressed && { opacity: 0.6 }]}>
+                <Text style={styles.positionText}>{option.label}</Text>
+              </Pressable>
+            ))}
+            <Button title="Back" variant="text" onPress={() => setView('menu')} />
+          </ScrollView>
+        ) : null}
+
         {list && view === 'move' ? (
           <ScrollView contentContainerStyle={styles.positions}>
             {Array.from({ length: total }, (_, i) => {
@@ -169,6 +222,29 @@ export function ListActionsSheet({
       </Sheet>
 
       <ConfirmDialog
+        visible={!!confirmCards}
+        icon="archive"
+        title={`Archive all cards in ${confirmCards?.name ?? 'this list'}?`}
+        message={`${plural(confirmCards?.cards.length ?? 0, 'card')} will be hidden from the board for everyone. The list stays. You can restore the cards from Archived items.`}
+        confirmLabel="Archive cards"
+        loading={archiveCards.isPending}
+        error={archiveCards.isError ? getErrorMessage(archiveCards.error) : null}
+        onCancel={() => {
+          setConfirmCards(null);
+          archiveCards.reset();
+        }}
+        onConfirm={() =>
+          confirmCards &&
+          archiveCards.mutate(confirmCards.id, {
+            onSuccess: () => {
+              setConfirmCards(null);
+              close();
+            },
+          })
+        }
+      />
+
+      <ConfirmDialog
         visible={confirm}
         icon="archive"
         title={`Archive the ${archiving?.name ?? ''} list?`}
@@ -198,6 +274,7 @@ const styles = StyleSheet.create({
   menu: { paddingVertical: spacing.xs },
   form: { padding: spacing.lg, gap: spacing.md },
   positions: { padding: spacing.lg, gap: spacing.sm },
+  sortNote: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   position: {
     flexDirection: 'row',
     alignItems: 'center',

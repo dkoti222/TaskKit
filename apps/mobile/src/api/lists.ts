@@ -25,3 +25,17 @@ export async function moveList(listId: string, index: number) {
   const { data } = await api.patch<MovedList>(`/lists/${listId}/move`, { index });
   return data;
 }
+
+export type CardSort = 'dueAt' | 'title' | 'newest' | 'oldest';
+
+/** Reorders the list's cards once (due date: soonest first, none last). */
+export async function sortCards(listId: string, by: CardSort) {
+  const { data } = await api.post<{ count: number }>(`/lists/${listId}/sort`, { by });
+  return data;
+}
+
+/** Archives every card in the list; the list itself stays. */
+export async function archiveListCards(listId: string) {
+  const { data } = await api.post<{ count: number }>(`/lists/${listId}/archive-cards`);
+  return data;
+}

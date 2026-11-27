@@ -1,6 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { archiveList, createList, renameList } from '@/api/lists';
+import {
+  archiveList,
+  archiveListCards,
+  sortCards,
+  type CardSort,
+  createList,
+  renameList,
+} from '@/api/lists';
 import type { BoardContent, ListFields } from '@/api/types';
 import { patchList } from '@/lib/board-cache';
 import { boardKeys } from './use-boards';
@@ -59,6 +66,26 @@ export function useArchiveList(boardId: string) {
   return useMutation({
     mutationFn: (listId: string) => archiveList(listId),
     onSuccess: (list) => cache.update((old) => patchList(old, list.id, () => null)),
+    onSettled: () => cache.refetch(),
+  });
+}
+
+/** POST /lists/:id/sort, then reload the board to show the new order. */
+export function useSortCards(boardId: string) {
+  const cache = useContentCache(boardId);
+  return useMutation({
+    mutationFn: ({ listId, by }: { listId: string; by: CardSort }) => sortCards(listId, by),
+    onSettled: () => cache.refetch(),
+  });
+}
+
+/** POST /lists/:id/archive-cards: the cards go to Archived items, the list stays. */
+export function useArchiveListCards(boardId: string) {
+  const cache = useContentCache(boardId);
+  return useMutation({
+    mutationFn: (listId: string) => archiveListCards(listId),
+    onSuccess: (_, listId) =>
+      cache.update((old) => patchList(old, listId, (l) => ({ ...l, cards: [] }))),
     onSettled: () => cache.refetch(),
   });
 }

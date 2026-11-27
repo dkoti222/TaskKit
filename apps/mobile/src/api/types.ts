@@ -34,10 +34,14 @@ export type Workspace = {
   id: string;
   name: string;
   description: string | null;
+  /** A signed link to the uploaded logo (valid for an hour), or null. */
   logoUrl: string | null;
   role: Role;
   memberCount: number;
   createdAt: string;
+  /** Workspace rules (screen 24). Only on GET /workspaces/:id. */
+  membersCanCreateBoards?: boolean;
+  allowInviteLinks?: boolean;
 };
 
 export type Member = {
@@ -237,6 +241,8 @@ export type ActivityData = {
   commentId?: string;
   fileName?: string;
   boardName?: string;
+  count?: number;
+  by?: string;
   changes?: { name?: string; color?: string; visibility?: BoardVisibility; archived?: boolean };
 };
 

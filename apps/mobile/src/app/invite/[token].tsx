@@ -7,7 +7,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { logOut } from '@/api/auth';
 import { getErrorMessage, getErrorStatus } from '@/api/errors';
 import type { AssignableRole } from '@/api/types';
-import { acceptInvitation } from '@/api/workspaces';
+import { acceptInvitation, declineInvitation } from '@/api/workspaces';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { InfoNote } from '@/components/info-note';
@@ -104,7 +104,13 @@ function SignedInInvite({
   });
 
   const decline = async () => {
-    // No decline API: forget the link on this phone. The invite expires on its own.
+    // Tell the API (the link stops working), then forget it on this phone. If the API call
+    // fails (say, the link already expired) forgetting it is still the right thing.
+    try {
+      await declineInvitation(token);
+    } catch {
+      // ignore: see above
+    }
     await clearPending();
     close();
   };

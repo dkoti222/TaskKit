@@ -1,12 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { putFile } from '@/api/attachments';
+
 import type { AssignableRole, Member, Workspace } from '@/api/types';
 import {
   changeMemberRole,
   deleteWorkspace,
   leaveWorkspace,
+  type LogoType,
   removeMember,
+  removeWorkspaceLogo,
+  requestLogoUpload,
   revokeInvitation,
+  setWorkspaceLogo,
   transferOwnership,
   updateWorkspace,
 } from '@/api/workspaces';
@@ -31,8 +37,7 @@ export function useUpdateWorkspace(workspaceId: string) {
   const queryClient = useQueryClient();
   const refresh = useRefreshWorkspace(workspaceId);
   return useMutation({
-    mutationFn: (body: { name?: string; description?: string }) =>
-      updateWorkspace(workspaceId, body),
+    mutationFn: (body: Parameters<typeof updateWorkspace>[1]) => updateWorkspace(workspaceId, body),
     onSuccess: (updated) => {
       // The response has no role/memberCount, so merge it into what we already have.
       queryClient.setQueryData<Workspace>(workspaceKeys.detail(workspaceId), (old) =>
@@ -122,5 +127,28 @@ export function useDeleteWorkspace(workspaceId: string) {
   return useMutation({
     mutationFn: () => deleteWorkspace(workspaceId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: workspaceKeys.list(), exact: true }),
+  });
+}
+
+/**
+ * Screen 24 "Change logo": PUT the picked image to the link from the API, then use it.
+ * `null` removes the logo.
+ */
+export function useWorkspaceLogo(workspaceId: string) {
+  const queryClient = useQueryClient();
+  const refresh = useRefreshWorkspace(workspaceId);
+  return useMutation({
+    mutationFn: async (file: { uri: string; mimeType: LogoType } | null) => {
+      if (!file) return removeWorkspaceLogo(workspaceId);
+      const blob = await (await fetch(file.uri)).blob();
+      const { key, upload } = await requestLogoUpload(workspaceId, file.mimeType, blob.size);
+      await putFile(upload, blob, () => {});
+      return setWorkspaceLogo(workspaceId, key);
+    },
+    onSuccess: (updated) =>
+      queryClient.setQueryData<Workspace>(workspaceKeys.detail(workspaceId), (old) =>
+        old ? { ...old, logoUrl: updated.logoUrl } : old,
+      ),
+    onSettled: refresh,
   });
 }

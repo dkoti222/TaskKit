@@ -32,7 +32,8 @@ import { findCachedBoard, useBoard } from '@/hooks/use-boards';
 import { useCreateLists } from '@/hooks/use-lists';
 import { useMe } from '@/hooks/use-me';
 import { useMoveCard, useMoveList } from '@/hooks/use-move';
-import { useLiveToast } from '@/realtime/socket';
+import { usePendingChanges } from '@/hooks/use-pending-changes';
+import { useLiveToast, useRealtime } from '@/realtime/socket';
 import { useWorkspace } from '@/hooks/use-workspaces';
 import { dueState, tint } from '@/lib/format';
 import { canEditCards } from '@/lib/roles';
@@ -62,6 +63,10 @@ export default function BoardScreen() {
   const moveCard = useMoveCard(id);
   const moveList = useMoveList(id);
   const createLists = useCreateLists(id);
+  // 30 · Offline: changes wait and go out later, but moves need a connection (their position
+  // and version depend on what others did meanwhile), so dragging is off while offline.
+  const online = useRealtime((s) => s.online);
+  const pending = usePendingChanges();
 
   const [filter, setFilter] = useState<Filter>({ kind: 'all' });
   const [labelSheet, setLabelSheet] = useState(false);
@@ -205,8 +210,9 @@ export default function BoardScreen() {
             width={columnWidth}
             maxHeight={columnMax}
             editable={editable}
-            dragCards={editable && !filterCards}
-            onDragList={editable ? drag : undefined}
+            dragCards={editable && !filterCards && online}
+            onDragList={editable && online ? drag : undefined}
+            waitingCardIds={pending.cardIds}
             listActive={isActive}
             onMoveCard={(card, index) => onMoveCard(item, card, index)}
             onCardPress={(card) =>
@@ -336,6 +342,24 @@ export default function BoardScreen() {
         {body}
       </View>
 
+      {pending.count > 0 ? (
+        <View style={styles.waiting} accessibilityRole="alert">
+          <View style={styles.waitingIcon}>
+            <Feather name="refresh-cw" size={16} color="#B5561A" />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.waitingTitle}>
+              {pending.count === 1 ? '1 change waiting' : `${pending.count} changes waiting`}
+            </Text>
+            <Text style={styles.waitingText}>
+              {online
+                ? 'Sending now…'
+                : 'It’ll be sent when you’re back online. Moving cards needs a connection.'}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       <Toast message={toast ?? live} tone={toast ? 'error' : 'info'} onHide={hideToast} />
 
       {editable ? (
@@ -416,6 +440,30 @@ function LabelFilterSheet({
 }
 
 const styles = StyleSheet.create({
+  waiting: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.divider,
+  },
+  waitingIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#FDEEE2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waitingTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  waitingText: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: 2 },
   root: { flex: 1 },
   flex: { flex: 1 },
   header: {

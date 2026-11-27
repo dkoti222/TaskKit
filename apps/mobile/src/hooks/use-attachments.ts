@@ -12,7 +12,7 @@ import type { BoardContent } from '@/api/types';
 import { patchCard } from '@/lib/board-cache';
 import { activityKeys } from './use-activity';
 import { boardKeys } from './use-boards';
-import { cardKeys } from './use-cards';
+import { cardChangeKey, cardKeys } from './use-cards';
 
 export const attachmentKeys = {
   /** Under the card's key, so refreshing the card refreshes its files too. */
@@ -40,6 +40,7 @@ export function useUploadAttachment(cardId: string, boardId: string) {
   const [progress, setProgress] = useState<number | null>(null);
 
   const mutation = useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: async (file: PickedFile) => {
       setProgress(0);
       // Read the file once: its real size is what the API checks against.
@@ -69,6 +70,7 @@ export function useUploadAttachment(cardId: string, boardId: string) {
 export function useDeleteAttachment(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (attachmentId: string) => deleteAttachment(attachmentId),
     onSuccess: () => {
       queryClient.setQueryData<BoardContent>(boardKeys.content(boardId), (old) =>

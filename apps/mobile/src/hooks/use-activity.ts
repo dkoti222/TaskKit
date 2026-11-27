@@ -21,7 +21,7 @@ import {
 import type { ActivityItem, ActivityKind, BoardContent, Comment, Page } from '@/api/types';
 import { patchCard } from '@/lib/board-cache';
 import { boardKeys } from './use-boards';
-import { cardKeys } from './use-cards';
+import { cardChangeKey, cardKeys } from './use-cards';
 
 export const activityKeys = {
   /** Under the card's key, so refreshing the card refreshes its timeline too. */
@@ -113,6 +113,7 @@ function bumpCommentCount(queryClient: QueryClient, boardId: string, cardId: str
 export function useAddComment(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (body: string) => createComment(cardId, body),
     onSuccess: () => {
       bumpCommentCount(queryClient, boardId, cardId, 1);
@@ -125,6 +126,7 @@ export function useAddComment(cardId: string, boardId: string) {
 export function useEditComment(cardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: ({ commentId, body }: { commentId: string; body: string }) =>
       updateComment(commentId, body),
     onSuccess: (comment) => patchComment(queryClient, cardId, comment),
@@ -135,6 +137,7 @@ export function useEditComment(cardId: string) {
 export function useDeleteComment(cardId: string, boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: cardChangeKey(cardId),
     mutationFn: (comment: Comment) => deleteComment(comment.id),
     onSuccess: (_, comment) => {
       patchComment(queryClient, cardId, { ...comment, deleted: true, body: '', mentions: [] });

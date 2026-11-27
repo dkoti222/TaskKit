@@ -89,6 +89,13 @@ export function describeActivity(
       return [t('renamed a list to '), s(d.listName, 'a list')];
     case 'list.archived':
       return [t(d.archived ? 'archived the list ' : 'restored the list '), s(d.listName, 'a list')];
+    case 'list.sorted':
+      return [t('sorted the cards in '), s(d.listName, 'a list')];
+    case 'list.cards.archived':
+      return [
+        t(`archived ${d.count ?? 'all'} card${d.count === 1 ? '' : 's'} in `),
+        s(d.listName, 'a list'),
+      ];
     case 'list.moved':
       return [t('moved the list '), s(d.listName, 'a list')];
     case 'label.created':

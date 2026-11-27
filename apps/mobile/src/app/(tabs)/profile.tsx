@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -16,22 +16,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { forgotPassword, logOut } from '@/api/auth';
 import { getErrorMessage } from '@/api/errors';
+import { listSessions, logoutOtherDevices } from '@/api/sessions';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Sheet } from '@/components/sheet';
 import { useMe } from '@/hooks/use-me';
 import { useNotificationSettings, useUpdateNotificationSettings } from '@/hooks/use-notifications';
 import { pushUnavailableReason } from '@/notifications/push';
-import { initials } from '@/lib/format';
+import { initials, timeAgo } from '@/lib/format';
 import { colors, fonts, radius, spacing } from '@/theme';
 
 // 22 · Profile and settings
-// Not built yet (no API): active devices, log out of other devices.
+// Active devices come from GET /me/sessions (one per login; this phone is marked).
 export default function ProfileScreen() {
   const me = useMe();
   const [loggingOut, setLoggingOut] = useState(false);
   const settings = useNotificationSettings();
   const updateSettings = useUpdateNotificationSettings();
   const pushNote = pushUnavailableReason();
+
+  // Active devices (one per login session) and "Log out of other devices".
+  const queryClient = useQueryClient();
+  const sessions = useQuery({ queryKey: ['me', 'sessions'], queryFn: listSessions });
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [confirmOthers, setConfirmOthers] = useState(false);
+  const logoutOthers = useMutation({
+    mutationFn: logoutOtherDevices,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me', 'sessions'] }),
+  });
+  const deviceCount = sessions.data?.length ?? 0;
+  const others = (sessions.data ?? []).filter((s) => !s.current).length;
 
   // "Change password" uses the existing reset flow: we email a link that opens Set new password.
   const changePassword = useMutation({ mutationFn: forgotPassword });
@@ -166,6 +181,37 @@ export default function ProfileScreen() {
                 : `We emailed a link to ${me.data?.email}. Open it on this phone to set a new password.`}
             </AppText>
           ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Active devices, ${deviceCount} signed in`}
+            onPress={() => setDevicesOpen(true)}
+            style={({ pressed }) => [styles.row, styles.rowDivider, pressed && styles.pressed]}>
+            <AppText style={styles.rowText}>Active devices</AppText>
+            {sessions.isPending ? (
+              <ActivityIndicator color={colors.muted} />
+            ) : (
+              <AppText variant="small">
+                {sessions.isError ? 'Tap to retry' : `${deviceCount} signed in`}
+              </AppText>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={others === 0 || logoutOthers.isPending}
+            onPress={() => {
+              logoutOthers.reset();
+              setConfirmOthers(true);
+            }}
+            style={({ pressed }) => [styles.row, styles.rowDivider, pressed && styles.pressed]}>
+            <AppText style={[styles.rowText, styles.link, others === 0 && styles.linkOff]}>
+              Log out of other devices
+            </AppText>
+          </Pressable>
+          {logoutOthers.isSuccess ? (
+            <AppText variant="small" style={styles.rowNote}>
+              {logoutOthers.data.message}. They’ll be signed out within 15 minutes.
+            </AppText>
+          ) : null}
         </View>
 
         <Button
@@ -183,6 +229,53 @@ export default function ProfileScreen() {
           style={({ pressed }) => [styles.deleteLink, pressed && { opacity: 0.6 }]}>
           <Text style={styles.deleteText}>Delete account</Text>
         </Pressable>
+
+        <Sheet
+          visible={devicesOpen}
+          onClose={() => setDevicesOpen(false)}
+          title="Active devices"
+          subtitle="Where you're signed in">
+          <View style={styles.devices}>
+            {sessions.isError ? (
+              <Button title="Try again" variant="secondary" onPress={() => sessions.refetch()} />
+            ) : (
+              (sessions.data ?? []).map((s) => (
+                <View key={s.id} style={styles.device}>
+                  <Feather
+                    name={/web/i.test(s.deviceName ?? '') ? 'monitor' : 'smartphone'}
+                    size={20}
+                    color={colors.muted}
+                  />
+                  <View style={styles.flex}>
+                    <AppText style={styles.deviceName}>
+                      {s.deviceName ?? 'Unknown device'}
+                      {s.current ? (
+                        <AppText style={styles.thisDevice}> · This device</AppText>
+                      ) : null}
+                    </AppText>
+                    <AppText variant="small">
+                      Last active: {timeAgo(s.lastActiveAt)} · Signed in: {timeAgo(s.signedInAt)}
+                    </AppText>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </Sheet>
+
+        <ConfirmDialog
+          visible={confirmOthers}
+          icon="log-out"
+          title="Log out of other devices?"
+          message={`${others} other ${others === 1 ? 'device' : 'devices'} will be signed out within 15 minutes. This phone stays signed in.`}
+          confirmLabel="Log out others"
+          loading={logoutOthers.isPending}
+          error={logoutOthers.isError ? getErrorMessage(logoutOthers.error) : null}
+          onCancel={() => setConfirmOthers(false)}
+          onConfirm={() =>
+            logoutOthers.mutate(undefined, { onSuccess: () => setConfirmOthers(false) })
+          }
+        />
 
         <AppText variant="small" style={styles.version}>
           TaskKit {Constants.expoConfig?.version ?? ''}
@@ -241,6 +334,12 @@ const styles = StyleSheet.create({
   },
   rowText: { fontSize: 16 },
   rowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  link: { color: colors.primary, fontFamily: fonts.medium },
+  linkOff: { color: colors.muted },
+  devices: { padding: spacing.lg, gap: spacing.md },
+  device: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
+  deviceName: { fontFamily: fonts.medium, fontSize: 15 },
+  thisDevice: { fontFamily: fonts.medium, fontSize: 13, color: colors.success },
   settingsLoading: { marginVertical: spacing.lg },
   box: {
     width: 22,

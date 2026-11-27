@@ -1,12 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { BoardList, CardSummary } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { CardFace } from '@/components/card-ui';
+import { DraggableCard, DropGap, useBoardDrag } from '@/components/board-drag';
 import { FormMessage, IconButton } from '@/components/misc';
 import { TextField } from '@/components/text-field';
 import { colors, fonts, radius, spacing } from '@/theme';
@@ -14,8 +13,8 @@ import { colors, fonts, radius, spacing } from '@/theme';
 export const COLUMN_GAP = 10;
 
 /**
- * One list on the board: header (long-press to drag the list), its cards (long-press to drag
- * a card up or down), and "Add card" at the bottom.
+ * One list on the board: header (long-press to drag the list), its cards (long-press to drag a
+ * card within this list or to another one, see board-drag.tsx), and "Add card" at the bottom.
  */
 export function ListColumn({
   list,
@@ -26,7 +25,6 @@ export function ListColumn({
   dragCards,
   onDragList,
   listActive,
-  onMoveCard,
   onCardPress,
   onAddCard,
   onMenu,
@@ -40,13 +38,11 @@ export function ListColumn({
   maxHeight: number;
   /** Shows the list menu and "Add card". */
   editable: boolean;
-  /** Long-press drag of cards (off for Viewers and while a filter is on). */
+  /** Long-press drag of cards (off for Viewers, while a filter is on, and offline). */
   dragCards: boolean;
   /** Starts dragging this list (from the outer list of lists). */
   onDragList?: () => void;
   listActive?: boolean;
-  /** A card was dropped at `index` in this list. */
-  onMoveCard: (card: CardSummary, index: number) => void;
   onCardPress?: (card: CardSummary) => void;
   onAddCard?: () => void;
   onMenu?: () => void;
@@ -54,13 +50,11 @@ export function ListColumn({
   /** Cards with changes waiting to be sent (offline). */
   waitingCardIds?: Set<string>;
 }) {
-  // DraggableFlatList wants its new order on the same frame the finger lifts, but our cache
-  // update is async (onMutate). Keep the dropped order until `cards` changes (optimistic update
-  // or rollback), so the card doesn't flash back to its old place.
-  const [override, setOverride] = useState<{ source: CardSummary[]; data: CardSummary[] } | null>(
-    null,
-  );
-  const data = override && override.source === cards ? override.data : cards;
+  const drag = useBoardDrag();
+  const dragging = drag?.dragging;
+  // Where the dragged card would land in this list: a gap before the card at that index
+  // (counting only the other cards).
+  const gapAt = dragging && drag?.target?.listId === list.id ? drag.target.index : null;
 
   return (
     <View
@@ -88,37 +82,47 @@ export function ListColumn({
         )}
       </Pressable>
 
-      <DraggableFlatList
-        data={data}
-        keyExtractor={(card) => card.id}
-        activationDistance={12}
-        containerStyle={styles.cardsContainer}
+      <ScrollView
+        ref={(ref) => drag?.registerColumn(list.id, ref)}
+        onScroll={(e) => drag?.onColumnScroll(list.id, e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
+        style={styles.cardsContainer}
         contentContainerStyle={styles.cards}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item, drag, isActive }) => (
-          <ScaleDecorator activeScale={1.03}>
-            <View style={styles.cardCell}>
-              <CardFace
-                card={item}
-                active={isActive}
-                waiting={waitingCardIds?.has(item.id)}
-                onPress={onCardPress ? () => onCardPress(item) : undefined}
-                onLongPress={dragCards ? drag : undefined}
-              />
-            </View>
-          </ScaleDecorator>
-        )}
-        onDragEnd={({ data: next, from, to }) => {
-          if (from === to) return;
-          setOverride({ source: cards, data: next });
-          onMoveCard(next[to], to);
-        }}
-        ListEmptyComponent={
-          <AppText variant="small" style={styles.empty}>
-            {filtered ? 'No matching cards' : 'No cards yet'}
-          </AppText>
-        }
-      />
+        showsVerticalScrollIndicator={false}>
+        {(() => {
+          const out: React.ReactNode[] = [];
+          let othersSeen = 0;
+          for (const card of cards) {
+            const isDragged = dragging?.card.id === card.id;
+            if (!isDragged && gapAt === othersSeen) {
+              out.push(<DropGap key="gap" height={dragging!.height} />);
+            }
+            out.push(
+              <View key={card.id} style={styles.cardCell}>
+                <DraggableCard
+                  card={card}
+                  listId={list.id}
+                  enabled={dragCards}
+                  waiting={waitingCardIds?.has(card.id)}
+                  onPress={onCardPress ? () => onCardPress(card) : undefined}
+                />
+              </View>,
+            );
+            if (!isDragged) othersSeen++;
+          }
+          if (gapAt !== null && gapAt >= othersSeen) {
+            out.push(<DropGap key="gap" height={dragging!.height} />);
+          }
+          if (!cards.length && gapAt === null) {
+            out.push(
+              <AppText key="empty" variant="small" style={styles.empty}>
+                {filtered ? 'No matching cards' : 'No cards yet'}
+              </AppText>,
+            );
+          }
+          return out;
+        })()}
+      </ScrollView>
 
       {editable && onAddCard ? (
         <Pressable

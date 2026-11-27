@@ -17,9 +17,13 @@ export type AuthResponse = TokenPair & { user: User };
 export type MessageResponse = { message: string };
 
 /** Shape of every API error body. `message` may be a list of validation messages. */
+/** Every API error: `code` is stable (e.g. FORBIDDEN_ROLE, VERSION_CONFLICT, LIMIT_REACHED). */
 export type ApiErrorBody = {
   statusCode: number;
+  code?: string;
   message: string | string[];
+  /** VALIDATION_FAILED: one entry per field. */
+  details?: { field: string; message: string }[];
   error?: string;
 };
 
@@ -62,7 +66,10 @@ export type PendingInvitation = {
   invitedBy: { name: string };
 };
 
-export type CreatedInvitation = Pick<PendingInvitation, 'id' | 'email' | 'role' | 'expiresAt'>;
+export type CreatedInvitation = Pick<PendingInvitation, 'id' | 'email' | 'role' | 'expiresAt'> & {
+  /** The invite link (taskkit://invite/…), only returned now: copy or share it. */
+  link: string;
+};
 
 /** GET /invitations/:token */
 export type InvitePreview = {
@@ -293,7 +300,13 @@ export type AppNotification = {
   };
 };
 
-export type NotificationSettings = { push: boolean; mentionEmail: boolean; dueReminders: boolean };
+export type NotificationSettings = {
+  push: boolean;
+  mentionEmail: boolean;
+  dueReminders: boolean;
+  /** How long before a due date to remind (1–72). */
+  reminderHoursBefore: number;
+};
 
 // ---------- Step 12: attachments ----------
 

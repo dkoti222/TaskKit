@@ -11,7 +11,8 @@ import type {
 
 // Reading is open to every role. Everything else needs board Owner, Admin or Member.
 
-export type NewCardInput = { title: string; description?: string; dueAt?: string };
+/** `id` (optional, made on the phone): sending the same create again doesn't make a second card. */
+export type NewCardInput = { id?: string; title: string; description?: string; dueAt?: string };
 export type CardUpdate = { title?: string; description?: string | null; dueAt?: string | null };
 
 /** Added at the bottom of the list. */
@@ -42,7 +43,7 @@ export async function archiveCard(cardId: string) {
  */
 export async function moveCard(
   cardId: string,
-  body: { listId: string; index: number; version: number },
+  body: { listId: string; index: number; version: number; moveId?: string },
 ) {
   const { data } = await api.patch<MovedCard>(`/cards/${cardId}/move`, body);
   return data;

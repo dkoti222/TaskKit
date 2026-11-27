@@ -26,6 +26,7 @@ import type {
 } from '@/api/types';
 import { getErrorMessage } from '@/api/errors';
 import { patchCard, patchList, removeCard } from '@/lib/board-cache';
+import { uuid } from '@/lib/uuid';
 import { boardKeys } from './use-boards';
 
 /**
@@ -110,8 +111,11 @@ export function useCreateCard(boardId: string) {
   const queryClient = useQueryClient();
   const contentKey = boardKeys.content(boardId);
   return useMutation({
-    mutationFn: async ({ listId, input, assignees, labels }: NewCardVars) => {
-      const card = await createCard(listId, input);
+    mutationFn: async (vars: NewCardVars) => {
+      const { listId, assignees, labels } = vars;
+      // A card id made here, kept on the variables, so a resumed/retried create can't duplicate.
+      vars.input.id ??= uuid();
+      const card = await createCard(listId, vars.input);
       let version = card.version;
       let savedAssignees: CardPerson[] = [];
       let savedLabels: Label[] = [];

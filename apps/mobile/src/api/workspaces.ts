@@ -159,3 +159,32 @@ export async function declineInvitation(token: string) {
   const { data } = await api.post<MessageResponse>(`/invitations/${token}/decline`);
   return data;
 }
+
+// ---------- Audit log (Owner, Admin) ----------
+
+export type AuditEntry = {
+  id: string;
+  action:
+    | 'ROLE_CHANGED'
+    | 'MEMBER_REMOVED'
+    | 'MEMBER_LEFT'
+    | 'MEMBER_JOINED'
+    | 'OWNERSHIP_TRANSFERRED'
+    | 'INVITATION_SENT'
+    | 'INVITATION_REVOKED'
+    | 'SETTINGS_CHANGED'
+    | 'LOGO_CHANGED';
+  createdAt: string;
+  actor: { id: string; name: string; avatarUrl: string | null };
+  targetId: string | null;
+  targetName: string | null;
+  payload: Record<string, unknown>;
+};
+
+export async function listAuditLog(workspaceId: string, cursor?: string | null) {
+  const { data } = await api.get<{ items: AuditEntry[]; nextCursor: string | null }>(
+    `/workspaces/${workspaceId}/audit-log`,
+    { params: { cursor: cursor ?? undefined, limit: 20 } },
+  );
+  return data;
+}

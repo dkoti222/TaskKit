@@ -222,6 +222,17 @@ export default function WorkspaceSettingsScreen() {
             <Feather name="chevron-right" size={18} color={colors.muted} />
           </Pressable>
 
+          {canEdit ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push({ pathname: '/workspace/[id]/audit', params: { id } })}
+              style={({ pressed }) => [styles.card, styles.linkRow, pressed && styles.pressed]}>
+              <Feather name="shield" size={18} color={colors.ink} />
+              <AppText style={styles.linkText}>Audit log</AppText>
+              <Feather name="chevron-right" size={18} color={colors.muted} />
+            </Pressable>
+          ) : null}
+
           <AppText style={styles.dangerLabel}>
             {ws!.role === 'OWNER' ? 'Danger zone · Owner only' : 'Danger zone'}
           </AppText>

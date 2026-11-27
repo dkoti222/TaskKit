@@ -2,9 +2,10 @@ import Feather from '@expo/vector-icons/Feather';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,7 @@ import type { BoardList, CardSummary, Label } from '@/api/types';
 import { AppText } from '@/components/app-text';
 import { BoardAccessRemoved, useBoardAccessLost } from '@/components/board-access';
 import { AddListTile, COLUMN_GAP, FirstListCard, ListColumn } from '@/components/board-columns';
+import { BoardDragProvider } from '@/components/board-drag';
 import { Button } from '@/components/button';
 import { LabelChip, Toast } from '@/components/card-ui';
 import { ListActionsSheet } from '@/components/list-actions-sheet';
@@ -72,6 +74,14 @@ export default function BoardScreen() {
   const [labelSheet, setLabelSheet] = useState(false);
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // The horizontal list of lists, so dragging a card near the screen edge can scroll it.
+  const boardRef = useRef<FlatList<BoardList>>(null);
+  const boardOffset = useRef(0);
+  const scrollBoardBy = useCallback((dx: number) => {
+    const next = Math.max(0, boardOffset.current + dx);
+    boardOffset.current = next;
+    boardRef.current?.scrollToOffset({ offset: next, animated: false });
+  }, []);
   const [bodyHeight, setBodyHeight] = useState(0);
   // Someone else's change, as a green toast ("Sana moved Drag and drop to Doing").
   const [live, setLive] = useState<string | null>(null);
@@ -135,9 +145,10 @@ export default function BoardScreen() {
 
   const showError = (error: unknown) => setToast(getErrorMessage(error));
 
-  const onMoveCard = (list: BoardList, card: CardSummary, index: number) =>
+  // A card dropped by dragging (within a list or into another one).
+  const onMoveCard = (card: CardSummary, toListId: string, index: number) =>
     moveCard.mutate(
-      { cardId: card.id, listId: list.id, index, version: card.version },
+      { cardId: card.id, listId: toListId, index, version: card.version },
       { onError: showError },
     );
 
@@ -191,6 +202,11 @@ export default function BoardScreen() {
   } else {
     body = (
       <DraggableFlatList
+        // DraggableFlatList forwards to gesture-handler's FlatList; scrollToOffset is the same.
+        ref={boardRef as never}
+        onScrollOffsetChange={(offset) => {
+          boardOffset.current = offset;
+        }}
         horizontal
         data={lists}
         keyExtractor={(list) => list.id}
@@ -214,7 +230,6 @@ export default function BoardScreen() {
             onDragList={editable && online ? drag : undefined}
             waitingCardIds={pending.cardIds}
             listActive={isActive}
-            onMoveCard={(card, index) => onMoveCard(item, card, index)}
             onCardPress={(card) =>
               router.push({
                 pathname: '/board/[id]/card/[cardId]',
@@ -256,136 +271,146 @@ export default function BoardScreen() {
   ];
 
   return (
-    <View style={[styles.root, { backgroundColor: tint(color, 0.9) }]}>
-      <StatusBar style="light" />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: color }}>
-        <View style={styles.header}>
-          <IconButton icon="chevron-left" label="Go back" onPress={goBack} color={colors.surface} />
-          <View style={styles.titleBox}>
-            <View style={styles.titleRow}>
-              <AppText style={styles.title} numberOfLines={1} accessibilityRole="header">
-                {info?.name ?? cached?.name ?? ''}
-              </AppText>
-              {info?.visibility === 'PRIVATE' ? (
-                <Feather
-                  name="lock"
-                  size={14}
-                  color={colors.surface}
-                  accessibilityLabel="Private board"
-                />
+    <BoardDragProvider
+      listOrder={cachedLists ?? []}
+      scrollBoardBy={scrollBoardBy}
+      onMove={onMoveCard}>
+      <View style={[styles.root, { backgroundColor: tint(color, 0.9) }]}>
+        <StatusBar style="light" />
+        <SafeAreaView edges={['top']} style={{ backgroundColor: color }}>
+          <View style={styles.header}>
+            <IconButton
+              icon="chevron-left"
+              label="Go back"
+              onPress={goBack}
+              color={colors.surface}
+            />
+            <View style={styles.titleBox}>
+              <View style={styles.titleRow}>
+                <AppText style={styles.title} numberOfLines={1} accessibilityRole="header">
+                  {info?.name ?? cached?.name ?? ''}
+                </AppText>
+                {info?.visibility === 'PRIVATE' ? (
+                  <Feather
+                    name="lock"
+                    size={14}
+                    color={colors.surface}
+                    accessibilityLabel="Private board"
+                  />
+                ) : null}
+              </View>
+              {workspace.data ? (
+                <AppText style={styles.subtitle} numberOfLines={1}>
+                  {workspace.data.name}
+                </AppText>
               ) : null}
             </View>
-            {workspace.data ? (
-              <AppText style={styles.subtitle} numberOfLines={1}>
-                {workspace.data.name}
-              </AppText>
+            {info ? (
+              <IconButton
+                icon="clock"
+                label="Board activity"
+                onPress={() => router.push({ pathname: '/board/[id]/activity', params: { id } })}
+                color={colors.surface}
+              />
+            ) : null}
+            {isViewer ? (
+              <View
+                style={styles.viewOnly}
+                accessibilityLabel="View only. You're a Viewer on this board.">
+                <Feather name="eye" size={14} color={color} />
+                <Text style={[styles.viewOnlyText, { color }]}>View only</Text>
+              </View>
+            ) : info ? (
+              <IconButton
+                icon="more-horizontal"
+                label="Board settings"
+                onPress={() => router.push({ pathname: '/board/[id]/settings', params: { id } })}
+                color={colors.surface}
+              />
             ) : null}
           </View>
-          {info ? (
-            <IconButton
-              icon="clock"
-              label="Board activity"
-              onPress={() => router.push({ pathname: '/board/[id]/activity', params: { id } })}
-              color={colors.surface}
-            />
+          {lists?.length && !isViewer ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+              accessibilityRole="tablist">
+              {chips.map((chip) => {
+                const selected = filter.kind === chip.key;
+                return (
+                  <Pressable
+                    key={chip.key}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    onPress={chip.onPress}
+                    style={[styles.chip, selected && styles.chipSelected]}>
+                    <Text style={[styles.chipText, selected && { color }]}>{chip.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           ) : null}
-          {isViewer ? (
-            <View
-              style={styles.viewOnly}
-              accessibilityLabel="View only. You're a Viewer on this board.">
-              <Feather name="eye" size={14} color={color} />
-              <Text style={[styles.viewOnlyText, { color }]}>View only</Text>
-            </View>
-          ) : info ? (
-            <IconButton
-              icon="more-horizontal"
-              label="Board settings"
-              onPress={() => router.push({ pathname: '/board/[id]/settings', params: { id } })}
-              color={colors.surface}
-            />
-          ) : null}
-        </View>
-        {lists?.length && !isViewer ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chips}
-            accessibilityRole="tablist">
-            {chips.map((chip) => {
-              const selected = filter.kind === chip.key;
-              return (
-                <Pressable
-                  key={chip.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  onPress={chip.onPress}
-                  style={[styles.chip, selected && styles.chipSelected]}>
-                  <Text style={[styles.chipText, selected && { color }]}>{chip.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+        </SafeAreaView>
+        <RealtimeBanner />
+
+        {isViewer ? (
+          <View style={styles.viewerNote}>
+            <AppText variant="secondary" style={styles.viewerNoteText}>
+              You{'’'}re a Viewer on this board. You can open cards but can{'’'}t add, move or edit
+              them. Ask an Admin for access.
+            </AppText>
+          </View>
         ) : null}
-      </SafeAreaView>
-      <RealtimeBanner />
 
-      {isViewer ? (
-        <View style={styles.viewerNote}>
-          <AppText variant="secondary" style={styles.viewerNoteText}>
-            You{'’'}re a Viewer on this board. You can open cards but can{'’'}t add, move or edit
-            them. Ask an Admin for access.
-          </AppText>
+        <View style={styles.flex} onLayout={(e) => setBodyHeight(e.nativeEvent.layout.height)}>
+          {body}
         </View>
-      ) : null}
 
-      <View style={styles.flex} onLayout={(e) => setBodyHeight(e.nativeEvent.layout.height)}>
-        {body}
-      </View>
-
-      {pending.count > 0 ? (
-        <View style={styles.waiting} accessibilityRole="alert">
-          <View style={styles.waitingIcon}>
-            <Feather name="refresh-cw" size={16} color="#B5561A" />
+        {pending.count > 0 ? (
+          <View style={styles.waiting} accessibilityRole="alert">
+            <View style={styles.waitingIcon}>
+              <Feather name="refresh-cw" size={16} color="#B5561A" />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.waitingTitle}>
+                {pending.count === 1 ? '1 change waiting' : `${pending.count} changes waiting`}
+              </Text>
+              <Text style={styles.waitingText}>
+                {online
+                  ? 'Sending now…'
+                  : 'It’ll be sent when you’re back online. Moving cards needs a connection.'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.flex}>
-            <Text style={styles.waitingTitle}>
-              {pending.count === 1 ? '1 change waiting' : `${pending.count} changes waiting`}
-            </Text>
-            <Text style={styles.waitingText}>
-              {online
-                ? 'Sending now…'
-                : 'It’ll be sent when you’re back online. Moving cards needs a connection.'}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      <Toast message={toast ?? live} tone={toast ? 'error' : 'info'} onHide={hideToast} />
+        <Toast message={toast ?? live} tone={toast ? 'error' : 'info'} onHide={hideToast} />
 
-      {editable ? (
-        <ListActionsSheet
-          list={cachedLists?.find((l) => l.id === menuListId) ?? null}
-          index={cachedLists?.findIndex((l) => l.id === menuListId) ?? 0}
-          total={cachedLists?.length ?? 0}
+        {editable ? (
+          <ListActionsSheet
+            list={cachedLists?.find((l) => l.id === menuListId) ?? null}
+            index={cachedLists?.findIndex((l) => l.id === menuListId) ?? 0}
+            total={cachedLists?.length ?? 0}
+            boardId={id}
+            boardName={info?.name ?? ''}
+            onClose={() => setMenuListId(null)}
+            onAddCard={openNewCard}
+            onError={showError}
+          />
+        ) : null}
+
+        <LabelFilterSheet
+          visible={labelSheet}
           boardId={id}
-          boardName={info?.name ?? ''}
-          onClose={() => setMenuListId(null)}
-          onAddCard={openNewCard}
-          onError={showError}
+          selectedId={filter.kind === 'label' ? filter.label.id : undefined}
+          onClose={() => setLabelSheet(false)}
+          onPick={(label) => {
+            setFilter(label ? { kind: 'label', label } : { kind: 'all' });
+            setLabelSheet(false);
+          }}
         />
-      ) : null}
-
-      <LabelFilterSheet
-        visible={labelSheet}
-        boardId={id}
-        selectedId={filter.kind === 'label' ? filter.label.id : undefined}
-        onClose={() => setLabelSheet(false)}
-        onPick={(label) => {
-          setFilter(label ? { kind: 'label', label } : { kind: 'all' });
-          setLabelSheet(false);
-        }}
-      />
-    </View>
+      </View>
+    </BoardDragProvider>
   );
 }
 

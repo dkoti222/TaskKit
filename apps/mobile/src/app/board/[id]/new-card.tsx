@@ -19,6 +19,7 @@ import { useBoardContent, useLabels } from '@/hooks/use-board-content';
 import { useBoardPeople } from '@/hooks/use-board-people';
 import { findCachedBoard } from '@/hooks/use-boards';
 import { useCreateCard } from '@/hooks/use-cards';
+import { uuid } from '@/lib/uuid';
 import { canEditCards, canManageLabels } from '@/lib/roles';
 import { colors, fonts, radius, spacing } from '@/theme';
 
@@ -35,6 +36,8 @@ export default function NewCardScreen() {
   const labels = useLabels(id);
   const people = useBoardPeople(board);
   const create = useCreateCard(id);
+  // One id for this new card: pressing Add again after a failure can't make a second card.
+  const [cardId] = useState(() => uuid());
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -100,6 +103,7 @@ export default function NewCardScreen() {
       {
         listId,
         input: {
+          id: cardId,
           title: trimmed,
           description: description.trim() || undefined,
           dueAt: dueAt ?? undefined,

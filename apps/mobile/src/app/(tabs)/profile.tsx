@@ -29,12 +29,21 @@ import { colors, fonts, radius, spacing } from '@/theme';
 
 // 22 · Profile and settings
 // Active devices come from GET /me/sessions (one per login; this phone is marked).
+const REMINDER_CHOICES = [1, 3, 6, 12, 24, 48, 72];
+
+/** 1 → "1 hour", 24 → "1 day", 48 → "2 days". */
+const reminderLabel = (hours: number) =>
+  hours % 24 === 0
+    ? `${hours / 24} ${hours === 24 ? 'day' : 'days'}`
+    : `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+
 export default function ProfileScreen() {
   const me = useMe();
   const [loggingOut, setLoggingOut] = useState(false);
   const settings = useNotificationSettings();
   const updateSettings = useUpdateNotificationSettings();
   const pushNote = pushUnavailableReason();
+  const [reminderSheet, setReminderSheet] = useState(false);
 
   // Active devices (one per login session) and "Log out of other devices".
   const queryClient = useQueryClient();
@@ -145,6 +154,18 @@ export default function ProfileScreen() {
               );
             })
           )}
+          {settings.data?.dueReminders ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remind me ${reminderLabel(settings.data.reminderHoursBefore)} before`}
+              onPress={() => setReminderSheet(true)}
+              style={({ pressed }) => [styles.row, styles.rowDivider, pressed && styles.pressed]}>
+              <AppText style={styles.rowText}>Remind me</AppText>
+              <AppText variant="small">
+                {reminderLabel(settings.data.reminderHoursBefore)} before
+              </AppText>
+            </Pressable>
+          ) : null}
           {settings.data?.push && pushNote ? (
             <AppText variant="small" style={styles.rowNote}>
               {pushNote} You’ll still see everything in Alerts.
@@ -229,6 +250,34 @@ export default function ProfileScreen() {
           style={({ pressed }) => [styles.deleteLink, pressed && { opacity: 0.6 }]}>
           <Text style={styles.deleteText}>Delete account</Text>
         </Pressable>
+
+        <Sheet
+          visible={reminderSheet}
+          onClose={() => setReminderSheet(false)}
+          title="Due date reminders"
+          subtitle="How long before a card is due">
+          <View style={styles.devices}>
+            {REMINDER_CHOICES.map((hours) => {
+              const on = settings.data?.reminderHoursBefore === hours;
+              return (
+                <Pressable
+                  key={hours}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  onPress={() => {
+                    updateSettings.mutate({ reminderHoursBefore: hours });
+                    setReminderSheet(false);
+                  }}
+                  style={({ pressed }) => [styles.device, pressed && styles.pressed]}>
+                  <AppText style={[styles.flex, on && styles.deviceName]}>
+                    {reminderLabel(hours)} before
+                  </AppText>
+                  {on ? <Feather name="check" size={18} color={colors.primary} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Sheet>
 
         <Sheet
           visible={devicesOpen}

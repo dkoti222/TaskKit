@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/errors';
-import type { AssignableRole } from '@/api/types';
+import type { AssignableRole, CreatedInvitation } from '@/api/types';
 import { createInvitation } from '@/api/workspaces';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -36,6 +36,8 @@ export default function InviteMembersScreen() {
   const [role, setRole] = useState<AssignableRole>('MEMBER');
   const [formError, setFormError] = useState<string | null>(null);
   const [failures, setFailures] = useState<Failure[]>([]);
+  // Invites sent from this screen, with their links to share (only available now).
+  const [sent, setSent] = useState<CreatedInvitation[]>([]);
 
   const close = () =>
     router.canGoBack()
@@ -47,16 +49,19 @@ export default function InviteMembersScreen() {
       const results = await Promise.allSettled(
         input.emails.map((email) => createInvitation(id, { email, role: input.role })),
       );
-      return input.emails.flatMap((email, i): Failure[] => {
+      const failed = input.emails.flatMap((email, i): Failure[] => {
         const result = results[i];
         return result.status === 'rejected'
           ? [{ email, message: getErrorMessage(result.reason) }]
           : [];
       });
+      const sent = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+      return { failed, sent };
     },
-    onSuccess: (failed) => {
+    onSuccess: ({ failed, sent: made }) => {
+      setSent((old) => [...old, ...made]);
       if (failed.length === 0) {
-        close();
+        setEmails([]);
         return;
       }
       // Keep only the addresses that failed so the user can fix or remove them and retry.
@@ -102,6 +107,39 @@ export default function InviteMembersScreen() {
           ) : (
             <InfoNote icon="lock">Only the Owner and Admins can invite people.</InfoNote>
           )}
+        </View>
+      </Screen>
+    );
+  }
+
+  // Everything sent: show the links so they can also go out by chat, not only email.
+  if (sent.length && emails.length === 0 && !mutation.isPending) {
+    return (
+      <Screen
+        navHeader={<NavHeader title={title} onBack={close} backIcon="x" />}
+        bottomBar={<Button title="Done" onPress={close} />}>
+        <View style={styles.top}>
+          <InfoNote icon="check-circle">
+            {`${sent.length === 1 ? 'Invite sent by email.' : `${sent.length} invites sent by email.`} You can also share each link yourself. Links expire after 7 days and work once.`}
+          </InfoNote>
+          {sent.map((invite) => (
+            <View key={invite.id} style={styles.sentRow}>
+              <AppText style={styles.sentEmail} numberOfLines={1}>
+                {invite.email}
+              </AppText>
+              <Button
+                title="Share link"
+                icon="share"
+                variant="secondary"
+                style={styles.shareButton}
+                onPress={() =>
+                  void Share.share({
+                    message: `Join ${workspace.data?.name ?? 'my workspace'} on TaskKit: ${invite.link}`,
+                  })
+                }
+              />
+            </View>
+          ))}
         </View>
       </Screen>
     );
@@ -163,6 +201,9 @@ export default function InviteMembersScreen() {
 }
 
 const styles = StyleSheet.create({
+  sentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sentEmail: { flex: 1, fontSize: 15 },
+  shareButton: { minHeight: 44, height: 44, paddingHorizontal: spacing.lg },
   loading: { marginTop: spacing.xxl },
   top: { gap: spacing.xl, marginTop: spacing.lg },
   group: { gap: 8 },

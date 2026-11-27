@@ -4,10 +4,18 @@ import { moveCard } from '@/api/cards';
 import { moveList } from '@/api/lists';
 import type { BoardContent, CardDetail } from '@/api/types';
 import { findCard, moveCardLocal, moveListLocal, patchCard } from '@/lib/board-cache';
+import { uuid } from '@/lib/uuid';
 import { boardKeys } from './use-boards';
 import { cardKeys } from './use-cards';
 
-export type MoveCardVars = { cardId: string; listId: string; index: number; version: number };
+/** `moveId` is filled in the first time the move is sent, so a resumed (offline) move reuses it. */
+export type MoveCardVars = {
+  cardId: string;
+  listId: string;
+  index: number;
+  version: number;
+  moveId?: string;
+};
 
 /**
  * PATCH /cards/:id/move with an optimistic update:
@@ -26,9 +34,12 @@ export function useMoveCard(boardId: string) {
 
   return useMutation({
     scope: { id: `move:${boardId}` },
-    mutationFn: ({ cardId, listId, index, version }: MoveCardVars) => {
+    mutationFn: (vars: MoveCardVars) => {
+      const { cardId, listId, index, version } = vars;
+      // Same object when a paused move resumes, so the retry carries the same id.
+      vars.moveId ??= uuid();
       const latest = findCard(queryClient.getQueryData<BoardContent>(key), cardId)?.card.version;
-      return moveCard(cardId, { listId, index, version: latest ?? version });
+      return moveCard(cardId, { listId, index, version: latest ?? version, moveId: vars.moveId });
     },
     onMutate: async ({ cardId, listId, index }) => {
       await queryClient.cancelQueries({ queryKey: key });
